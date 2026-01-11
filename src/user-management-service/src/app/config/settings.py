@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     
     # CosmosDB Configuration
+    # NOTE: These defaults are for testing only. Override in production via environment variables.
     cosmos_endpoint: str = "https://localhost:8081"
     cosmos_key: str = "test-key"
     cosmos_database_name: str = "UserManagement"
@@ -18,6 +19,7 @@ class Settings(BaseSettings):
     cosmos_audit_container_name: str = "AuditLogs"
     
     # JWT Configuration
+    # NOTE: Use a strong, randomly generated secret in production environments.
     jwt_secret: str = "test-secret"
     jwt_algorithm: str = "HS256"
     jwt_issuer: str = "auth-service"
