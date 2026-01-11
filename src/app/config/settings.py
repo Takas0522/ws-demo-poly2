@@ -1,6 +1,12 @@
 """User Management Service - Configuration"""
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
+from pathlib import Path
+
+# プロジェクトルートディレクトリを取得
+PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
@@ -28,7 +34,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     
     class Config:
-        env_file = ".env"
+        env_file = str(ENV_FILE) if ENV_FILE.exists() else ".env"
         case_sensitive = False
 
 

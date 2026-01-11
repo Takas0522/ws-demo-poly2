@@ -31,13 +31,17 @@ async def lifespan(app: FastAPI):
         logger.info("CosmosDB initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize CosmosDB: {str(e)}")
-        raise
-    
+        logger.warning(
+            "Service will start without CosmosDB connection. Some endpoints may not work.")
+
     yield
-    
+
     # Shutdown
     logger.info("Shutting down User Management Service...")
-    cosmos_client.close()
+    try:
+        cosmos_client.close()
+    except Exception as e:
+        logger.error(f"Error closing CosmosDB connection: {str(e)}")
 
 
 # Create FastAPI application
@@ -64,6 +68,8 @@ app.add_middleware(
 app.middleware("http")(validate_tenant_id)
 
 # Exception handlers
+
+
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle general exceptions"""
