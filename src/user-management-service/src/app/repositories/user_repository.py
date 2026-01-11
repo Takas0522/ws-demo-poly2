@@ -55,7 +55,8 @@ class UserRepository:
             
             # Merge updates
             existing_item.update(user_data)
-            existing_item['updatedAt'] = datetime.utcnow().isoformat()
+            from datetime import datetime, timezone
+            existing_item['updatedAt'] = datetime.now(timezone.utc).isoformat()
             
             updated_item = container.replace_item(
                 item=user_id,
@@ -76,7 +77,8 @@ class UserRepository:
                 return False
             
             existing_item['status'] = 'DELETED'
-            existing_item['updatedAt'] = datetime.utcnow().isoformat()
+            from datetime import datetime, timezone
+            existing_item['updatedAt'] = datetime.now(timezone.utc).isoformat()
             
             container.replace_item(item=user_id, body=existing_item)
             logger.info(f"User deleted: {user_id}")

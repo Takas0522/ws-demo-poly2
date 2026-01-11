@@ -11,14 +11,14 @@ class Settings(BaseSettings):
     environment: str = "development"
     
     # CosmosDB Configuration
-    cosmos_endpoint: str
-    cosmos_key: str
+    cosmos_endpoint: str = "https://localhost:8081"
+    cosmos_key: str = "test-key"
     cosmos_database_name: str = "UserManagement"
     cosmos_container_name: str = "Users"
     cosmos_audit_container_name: str = "AuditLogs"
     
     # JWT Configuration
-    jwt_secret: str
+    jwt_secret: str = "test-secret"
     jwt_algorithm: str = "HS256"
     jwt_issuer: str = "auth-service"
     

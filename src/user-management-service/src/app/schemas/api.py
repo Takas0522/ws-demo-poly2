@@ -1,7 +1,7 @@
 """User Management Service - API Response Schemas"""
 from typing import Optional, Generic, TypeVar
-from pydantic import BaseModel
-from datetime import datetime
+from pydantic import BaseModel, Field
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -32,4 +32,4 @@ class ApiResponse(BaseModel, Generic[T]):
     success: bool
     data: Optional[T] = None
     error: Optional[ApiError] = None
-    timestamp: datetime = datetime.utcnow()
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -1,6 +1,6 @@
 """User Management Service - User Service"""
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 from app.schemas import (
     CreateUserRequest,
@@ -48,7 +48,7 @@ class UserService:
         
         # Create user data
         user_id = str(uuid4())
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         user_data = {
             "id": user_id,
             "tenantId": request.tenant_id,
@@ -301,7 +301,7 @@ class UserService:
             "entityId": entity_id,
             "action": action.value,
             "performedBy": performed_by,
-            "performedAt": datetime.utcnow().isoformat(),
+            "performedAt": datetime.now(timezone.utc).isoformat(),
             "changes": changes or [],
             "metadata": {}
         }

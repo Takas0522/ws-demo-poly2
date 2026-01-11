@@ -11,7 +11,7 @@ class CosmosDBClient:
     """CosmosDB client wrapper"""
     
     def __init__(self):
-        self.client = CosmosClient(settings.cosmos_endpoint, settings.cosmos_key)
+        self.client = None
         self.database = None
         self.users_container = None
         self.audit_container = None
@@ -19,6 +19,9 @@ class CosmosDBClient:
     def initialize(self):
         """Initialize database and containers"""
         try:
+            # Create client
+            self.client = CosmosClient(settings.cosmos_endpoint, settings.cosmos_key)
+            
             # Create or get database
             self.database = self.client.create_database_if_not_exists(
                 id=settings.cosmos_database_name
@@ -52,5 +55,5 @@ class CosmosDBClient:
             logger.info("CosmosDB client closed")
 
 
-# Global instance
+# Global instance (will be initialized on startup)
 cosmos_client = CosmosDBClient()
