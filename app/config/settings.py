@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     cosmos_container_name: str = "Users"
     cosmos_audit_container_name: str = "AuditLogs"
 
+    # Redis Configuration (for caching)
+    redis_host: str = "redis"
+    redis_port: int = 6379
+    redis_password: Optional[str] = None
+    redis_db: int = 0
+
     # JWT Configuration
     # NOTE: Use a strong, randomly generated secret in production environments.
     jwt_secret: str = "test-secret"
