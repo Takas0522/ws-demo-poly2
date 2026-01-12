@@ -10,16 +10,16 @@ logger = logging.getLogger(__name__)
 
 class TenantRepository:
     """Tenant repository for CosmosDB operations"""
-    
+
     def __init__(self):
         self.container = None
-    
+
     def _get_container(self):
         """Get the tenants container"""
         if not self.container:
             self.container = cosmos_client.tenants_container
         return self.container
-    
+
     async def create(self, tenant_data: dict) -> dict:
         """Create a new tenant"""
         container = self._get_container()
@@ -30,7 +30,7 @@ class TenantRepository:
         except Exception as e:
             logger.error(f"Error creating tenant: {str(e)}")
             raise
-    
+
     async def get_by_id(self, tenant_id: str) -> Optional[dict]:
         """Get tenant by ID"""
         container = self._get_container()
@@ -42,7 +42,7 @@ class TenantRepository:
         except Exception as e:
             logger.error(f"Error retrieving tenant: {str(e)}")
             raise
-    
+
     async def update(self, tenant_id: str, tenant_data: dict) -> Optional[dict]:
         """Update tenant"""
         container = self._get_container()
@@ -51,11 +51,11 @@ class TenantRepository:
             existing_tenant = await self.get_by_id(tenant_id)
             if not existing_tenant:
                 return None
-            
+
             # Merge updates
             existing_tenant.update(tenant_data)
-            existing_tenant['updatedAt'] = datetime.utcnow().isoformat()
-            
+            existing_tenant["updatedAt"] = datetime.utcnow().isoformat()
+
             # Upsert the item
             updated_item = container.upsert_item(body=existing_tenant)
             logger.info(f"Tenant updated: {tenant_id}")
@@ -63,7 +63,7 @@ class TenantRepository:
         except Exception as e:
             logger.error(f"Error updating tenant: {str(e)}")
             raise
-    
+
     async def delete(self, tenant_id: str) -> bool:
         """Soft delete tenant"""
         container = self._get_container()
@@ -71,29 +71,29 @@ class TenantRepository:
             tenant = await self.get_by_id(tenant_id)
             if not tenant:
                 return False
-            
+
             # Soft delete by setting status
-            tenant['status'] = 'deleted'
-            tenant['deletedAt'] = datetime.utcnow().isoformat()
-            tenant['updatedAt'] = datetime.utcnow().isoformat()
-            
+            tenant["status"] = "deleted"
+            tenant["deletedAt"] = datetime.utcnow().isoformat()
+            tenant["updatedAt"] = datetime.utcnow().isoformat()
+
             container.upsert_item(body=tenant)
             logger.info(f"Tenant soft deleted: {tenant_id}")
             return True
         except Exception as e:
             logger.error(f"Error deleting tenant: {str(e)}")
             raise
-    
+
     async def list_tenants(
         self,
         status: Optional[str] = None,
         plan: Optional[str] = None,
         skip: int = 0,
-        limit: int = 50
+        limit: int = 50,
     ) -> Tuple[List[dict], int]:
         """
         List tenants with filtering and pagination.
-        
+
         Returns:
             Tuple of (items, total_count)
         """
@@ -102,34 +102,34 @@ class TenantRepository:
             # Build query
             query = "SELECT * FROM c WHERE c.status != 'deleted'"
             parameters = []
-            
+
             if status:
                 query += " AND c.status = @status"
-                parameters.append({'name': '@status', 'value': status})
-            
+                parameters.append({"name": "@status", "value": status})
+
             if plan:
                 query += " AND c.subscription.plan = @plan"
-                parameters.append({'name': '@plan', 'value': plan})
-            
+                parameters.append({"name": "@plan", "value": plan})
+
             query += " ORDER BY c.createdAt DESC"
-            
+
             # Get total count
             count_query = query.replace("SELECT *", "SELECT VALUE COUNT(1)")
-            count_items = list(container.query_items(
-                query=count_query,
-                parameters=parameters,
-                enable_cross_partition_query=True
-            ))
+            count_items = list(
+                container.query_items(
+                    query=count_query, parameters=parameters, enable_cross_partition_query=True
+                )
+            )
             total_count = count_items[0] if count_items else 0
-            
+
             # Get paginated items
             query += f" OFFSET {skip} LIMIT {limit}"
-            items = list(container.query_items(
-                query=query,
-                parameters=parameters,
-                enable_cross_partition_query=True
-            ))
-            
+            items = list(
+                container.query_items(
+                    query=query, parameters=parameters, enable_cross_partition_query=True
+                )
+            )
+
             return items, total_count
         except Exception as e:
             logger.error(f"Error listing tenants: {str(e)}")
@@ -138,16 +138,16 @@ class TenantRepository:
 
 class TenantUserRepository:
     """Tenant User repository for CosmosDB operations"""
-    
+
     def __init__(self):
         self.container = None
-    
+
     def _get_container(self):
         """Get the tenant users container"""
         if not self.container:
             self.container = cosmos_client.tenant_users_container
         return self.container
-    
+
     async def create(self, tenant_user_data: dict) -> dict:
         """Create a new tenant user relationship"""
         container = self._get_container()
@@ -158,31 +158,27 @@ class TenantUserRepository:
         except Exception as e:
             logger.error(f"Error creating tenant user: {str(e)}")
             raise
-    
-    async def get_by_user_and_tenant(
-        self,
-        user_id: str,
-        tenant_id: str
-    ) -> Optional[dict]:
+
+    async def get_by_user_and_tenant(self, user_id: str, tenant_id: str) -> Optional[dict]:
         """Get tenant user relationship"""
         container = self._get_container()
         try:
             query = """
-                SELECT * FROM c 
-                WHERE c.userId = @userId 
+                SELECT * FROM c
+                WHERE c.userId = @userId
                 AND c.tenantId = @tenantId
             """
             parameters = [
-                {'name': '@userId', 'value': user_id},
-                {'name': '@tenantId', 'value': tenant_id}
+                {"name": "@userId", "value": user_id},
+                {"name": "@tenantId", "value": tenant_id},
             ]
-            
-            items = list(container.query_items(
-                query=query,
-                parameters=parameters,
-                enable_cross_partition_query=True
-            ))
-            
+
+            items = list(
+                container.query_items(
+                    query=query, parameters=parameters, enable_cross_partition_query=True
+                )
+            )
+
             return items[0] if items else None
         except Exception as e:
             logger.error(f"Error retrieving tenant user: {str(e)}")
