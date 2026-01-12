@@ -4,8 +4,7 @@ setup(
     name="user-management-service",
     version="1.0.0",
     description="User Management Service with CRUD operations and tenant isolation",
-    packages=find_packages(where="src"),
-    package_dir={"": "src"},
+    packages=find_packages(),
     python_requires=">=3.11",
     install_requires=[
         "fastapi>=0.109.0",
