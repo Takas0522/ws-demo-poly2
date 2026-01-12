@@ -2,8 +2,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import Optional, List
 from app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse, AssignAdminRequest
-from app.schemas import ApiResponse
+from app.schemas import ApiResponse, TenantUserResponse, AddUserToTenantRequest
 from app.services.tenant_service import tenant_service
+from app.services.tenant_user_service import tenant_user_service
 from app.middleware import get_current_user
 from app.utils.permissions import require_permission
 import logging
@@ -156,4 +157,86 @@ async def assign_tenant_admin(
         raise
     except Exception as e:
         logger.error(f"Error assigning tenant admin: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/{tenant_id}/users", response_model=ApiResponse[TenantUserResponse], status_code=201)
+@require_permission("users.update")
+async def add_user_to_tenant(
+    tenant_id: str,
+    request: AddUserToTenantRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Add user to tenant.
+
+    Requires:
+        - users.update permission
+    """
+    try:
+        tenant_user = await tenant_user_service.add_user_to_tenant(
+            tenant_id=tenant_id,
+            request=request,
+            assigned_by=current_user.get("user_id", "system")
+        )
+
+        return ApiResponse(success=True, data=tenant_user)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding user to tenant: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{tenant_id}/users", response_model=ApiResponse[List[TenantUserResponse]])
+@require_permission("users.read")
+async def get_tenant_users(
+    tenant_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get all users in a tenant (with Redis caching).
+
+    Requires:
+        - users.read permission
+    """
+    try:
+        users = await tenant_user_service.get_tenant_users(tenant_id)
+
+        return ApiResponse(success=True, data=users)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting tenant users: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.delete("/{tenant_id}/users/{user_id}", status_code=204)
+@require_permission("users.delete")
+async def remove_user_from_tenant(
+    tenant_id: str,
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Remove user from tenant.
+
+    Requires:
+        - users.delete permission
+    """
+    try:
+        success = await tenant_user_service.remove_user_from_tenant(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            removed_by=current_user.get("user_id", "system")
+        )
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to remove user from tenant")
+
+        return None
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error removing user from tenant: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")

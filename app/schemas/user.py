@@ -1,6 +1,6 @@
 """User Management Service - Pydantic Schemas"""
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from enum import Enum
 
@@ -11,6 +11,12 @@ class UserStatus(str, Enum):
     INACTIVE = "INACTIVE"
     SUSPENDED = "SUSPENDED"
     DELETED = "DELETED"
+
+
+class UserType(str, Enum):
+    """User type enumeration"""
+    INTERNAL = "internal"  # 管理会社内ユーザー
+    EXTERNAL = "external"  # テナントユーザー
 
 
 class UserProfileSchema(BaseModel):
@@ -38,6 +44,11 @@ class UserBaseSchema(BaseModel):
 class CreateUserRequest(UserBaseSchema):
     """Create user request schema"""
     tenant_id: str = Field(..., min_length=1)
+    password: Optional[str] = Field(None, min_length=8, max_length=128)  # Plain password
+    user_type: Optional[UserType] = UserType.EXTERNAL
+    primary_tenant_id: Optional[str] = None
+    roles: Optional[List[str]] = Field(default_factory=list)
+    permissions: Optional[List[str]] = Field(default_factory=list)
 
 
 class UpdateUserRequest(BaseModel):
@@ -54,6 +65,10 @@ class UserResponse(UserBaseSchema):
     """User response schema"""
     id: str
     tenant_id: str
+    user_type: Optional[str] = None
+    primary_tenant_id: Optional[str] = None
+    roles: Optional[List[str]] = Field(default_factory=list)
+    permissions: Optional[List[str]] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
     created_by: str
@@ -68,6 +83,7 @@ class UserSearchCriteria(BaseModel):
     email: Optional[str] = None
     username: Optional[str] = None
     status: Optional[UserStatus] = None
+    user_type: Optional[UserType] = None
     search_term: Optional[str] = None  # Search across email, username, firstName, lastName
 
 
@@ -88,3 +104,32 @@ class PaginatedResponse(BaseModel):
     total_pages: int
     has_next_page: bool
     has_previous_page: bool
+
+
+# TenantUser schemas
+class TenantUserResponse(BaseModel):
+    """TenantUser response schema"""
+    id: str
+    user_id: str
+    tenant_id: str
+    roles: List[str] = Field(default_factory=list)
+    permissions: List[str] = Field(default_factory=list)
+    status: str
+    joined_at: datetime
+    left_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AddUserToTenantRequest(BaseModel):
+    """Add user to tenant request schema"""
+    user_id: str = Field(..., min_length=1)
+    roles: Optional[List[str]] = Field(default_factory=lambda: ["user"])
+    permissions: Optional[List[str]] = Field(default_factory=list)
+
+
+class BulkUserCreateRequest(BaseModel):
+    """Bulk user create request schema"""
+    users: List[CreateUserRequest] = Field(..., max_length=100)

@@ -1,6 +1,7 @@
 """User Management Service - Schemas Package"""
 from .user import (
     UserStatus,
+    UserType,
     UserProfileSchema,
     UserBaseSchema,
     CreateUserRequest,
@@ -9,6 +10,9 @@ from .user import (
     UserSearchCriteria,
     PaginationParams,
     PaginatedResponse,
+    TenantUserResponse,
+    AddUserToTenantRequest,
+    BulkUserCreateRequest,
 )
 from .audit import (
     AuditAction,
@@ -34,6 +38,7 @@ from .tenant import (
 
 __all__ = [
     "UserStatus",
+    "UserType",
     "UserProfileSchema",
     "UserBaseSchema",
     "CreateUserRequest",
@@ -42,6 +47,9 @@ __all__ = [
     "UserSearchCriteria",
     "PaginationParams",
     "PaginatedResponse",
+    "TenantUserResponse",
+    "AddUserToTenantRequest",
+    "BulkUserCreateRequest",
     "AuditAction",
     "AuditChangeSchema",
     "CreateAuditLogRequest",

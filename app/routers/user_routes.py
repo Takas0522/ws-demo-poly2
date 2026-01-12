@@ -1,6 +1,6 @@
 """User Management Service - User Routes"""
 from fastapi import APIRouter, Depends, Request, HTTPException, Query
-from typing import Optional
+from typing import Optional, List
 from app.schemas import (
     CreateUserRequest,
     UpdateUserRequest,
@@ -9,10 +9,16 @@ from app.schemas import (
     PaginationParams,
     PaginatedResponse,
     ApiResponse,
-    UserStatus
+    UserStatus,
+    UserType,
+    BulkUserCreateRequest,
+    TenantUserResponse,
+    AddUserToTenantRequest,
 )
 from app.services import user_service
+from app.services.tenant_user_service import tenant_user_service
 from app.middleware import get_current_user
+from app.utils.permissions import require_permission
 import logging
 
 logger = logging.getLogger(__name__)
@@ -136,13 +142,14 @@ async def search_users(
     email: Optional[str] = Query(None),
     username: Optional[str] = Query(None),
     status: Optional[UserStatus] = Query(None),
+    user_type: Optional[UserType] = Query(None),
     search_term: Optional[str] = Query(None),
     page_number: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     sort_by: Optional[str] = Query("created_at"),
     sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$")
 ):
-    """Search users with pagination"""
+    """Search users with pagination and advanced filters"""
     try:
         tenant_id = request.state.tenant_id
         
@@ -151,6 +158,7 @@ async def search_users(
             email=email,
             username=username,
             status=status,
+            user_type=user_type,
             search_term=search_term
         )
         
@@ -171,4 +179,49 @@ async def search_users(
         raise
     except Exception as e:
         logger.error(f"Error searching users: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.post("/bulk", response_model=ApiResponse[dict])
+@require_permission("users.create")
+async def bulk_create_users(
+    request: BulkUserCreateRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Bulk create users (max 100)"""
+    try:
+        results = await user_service.bulk_create_users(
+            request.users,
+            current_user["user_id"]
+        )
+        
+        return ApiResponse(
+            success=True,
+            data={"results": results}
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error bulk creating users: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/{user_id}/tenants", response_model=ApiResponse[List[TenantUserResponse]])
+@require_permission("users.read")
+async def get_user_tenants(
+    user_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """Get user's tenants (with Redis caching)"""
+    try:
+        tenants = await tenant_user_service.get_user_tenants(user_id)
+        
+        return ApiResponse(
+            success=True,
+            data=tenants
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting user tenants: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
