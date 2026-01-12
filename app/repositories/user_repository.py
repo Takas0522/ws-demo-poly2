@@ -111,6 +111,10 @@ class UserRepository:
             query_parts.append("AND c.status = @status")
             parameters.append({"name": "@status", "value": criteria.status})
         
+        if criteria.user_type:
+            query_parts.append("AND c.userType = @userType")
+            parameters.append({"name": "@userType", "value": criteria.user_type})
+        
         if criteria.search_term:
             query_parts.append(
                 "AND (CONTAINS(c.email, @searchTerm) OR "

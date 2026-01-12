@@ -9,12 +9,16 @@ from app.schemas import (
     UserSearchCriteria,
     PaginationParams,
     PaginatedResponse,
-    ErrorCode
+    ErrorCode,
+    UserType,
 )
 from app.repositories import user_repository, audit_repository
+from app.repositories.tenant_repository import tenant_repository
 from app.schemas.audit import AuditAction, CreateAuditLogRequest, AuditChangeSchema
+from app.utils.validation import validate_email_domain
 from fastapi import HTTPException
 import logging
+import bcrypt
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +29,14 @@ class UserService:
     def __init__(self):
         self.user_repo = user_repository
         self.audit_repo = audit_repository
+        self.tenant_repo = tenant_repository
     
     async def create_user(
         self,
         request: CreateUserRequest,
         created_by: str
     ) -> UserResponse:
-        """Create a new user"""
+        """Create a new user with email domain validation for internal users"""
         # Check if user with same email already exists
         existing_user = await self.user_repo.get_by_email(
             request.email,
@@ -46,9 +51,29 @@ class UserService:
                 }
             )
         
+        # Email domain validation for internal users
+        if request.user_type == UserType.INTERNAL:
+            # Get the system-internal tenant
+            tenant = await self.tenant_repo.get_by_id("system-internal")
+            if tenant:
+                validate_email_domain(request.email, tenant)
+            else:
+                logger.warning("system-internal tenant not found, skipping email domain validation")
+        
+        # Hash password if provided
+        password_hash = None
+        if request.password:
+            password_hash = bcrypt.hashpw(request.password.encode(), bcrypt.gensalt()).decode()
+        
         # Create user data
         user_id = str(uuid4())
         now = datetime.now(timezone.utc)
+        
+        # Determine primary tenant ID
+        primary_tenant_id = request.primary_tenant_id or request.tenant_id
+        if request.user_type == UserType.INTERNAL:
+            primary_tenant_id = "system-internal"
+        
         user_data = {
             "id": user_id,
             "tenantId": request.tenant_id,
@@ -58,11 +83,19 @@ class UserService:
             "lastName": request.last_name,
             "profile": request.profile.model_dump() if request.profile else {},
             "status": request.status.value if request.status else "ACTIVE",
+            "userType": request.user_type.value if request.user_type else UserType.EXTERNAL.value,
+            "primaryTenantId": primary_tenant_id,
+            "roles": request.roles or [],
+            "permissions": request.permissions or [],
             "createdAt": now.isoformat(),
             "updatedAt": now.isoformat(),
             "createdBy": created_by,
             "updatedBy": created_by
         }
+        
+        # Add password hash if available
+        if password_hash:
+            user_data["passwordHash"] = password_hash
         
         # Save to database
         created_user = await self.user_repo.create(user_data)
@@ -263,6 +296,42 @@ class UserService:
             has_previous_page=has_previous_page
         )
     
+    async def bulk_create_users(
+        self,
+        requests: List[CreateUserRequest],
+        created_by: str
+    ) -> List[dict]:
+        """Bulk create users (max 100)"""
+        if len(requests) > 100:
+            raise HTTPException(
+                status_code=400,
+                detail="一度に作成できるユーザーは100件までです"
+            )
+        
+        results = []
+        for user_request in requests:
+            try:
+                user = await self.create_user(user_request, created_by)
+                results.append({
+                    "success": True,
+                    "user": user.model_dump()
+                })
+            except Exception as e:
+                error_message = str(e)
+                if isinstance(e, HTTPException):
+                    error_message = e.detail if isinstance(e.detail, str) else str(e.detail)
+                
+                results.append({
+                    "success": False,
+                    "error": error_message,
+                    "data": {
+                        "email": user_request.email,
+                        "username": user_request.username
+                    }
+                })
+        
+        return results
+    
     def _map_to_response(self, user_data: dict) -> UserResponse:
         """Map database user to response schema"""
         from app.schemas.user import UserProfileSchema
@@ -279,6 +348,10 @@ class UserService:
             last_name=user_data["lastName"],
             profile=profile,
             status=user_data["status"],
+            user_type=user_data.get("userType"),
+            primary_tenant_id=user_data.get("primaryTenantId"),
+            roles=user_data.get("roles", []),
+            permissions=user_data.get("permissions", []),
             created_at=datetime.fromisoformat(user_data["createdAt"]),
             updated_at=datetime.fromisoformat(user_data["updatedAt"]),
             created_by=user_data["createdBy"],

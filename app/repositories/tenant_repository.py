@@ -167,6 +167,7 @@ class TenantUserRepository:
                 SELECT * FROM c
                 WHERE c.userId = @userId
                 AND c.tenantId = @tenantId
+                AND c.status = 'active'
             """
             parameters = [
                 {"name": "@userId", "value": user_id},
@@ -182,6 +183,77 @@ class TenantUserRepository:
             return items[0] if items else None
         except Exception as e:
             logger.error(f"Error retrieving tenant user: {str(e)}")
+            raise
+
+    async def get_by_user_id(self, user_id: str) -> List[dict]:
+        """Get all tenant relationships for a user"""
+        container = self._get_container()
+        try:
+            query = """
+                SELECT * FROM c
+                WHERE c.userId = @userId
+                AND c.status = 'active'
+            """
+            parameters = [{"name": "@userId", "value": user_id}]
+
+            items = list(
+                container.query_items(
+                    query=query, parameters=parameters, enable_cross_partition_query=True
+                )
+            )
+
+            return items
+        except Exception as e:
+            logger.error(f"Error retrieving user tenants: {str(e)}")
+            raise
+
+    async def get_by_tenant_id(self, tenant_id: str) -> List[dict]:
+        """Get all user relationships for a tenant"""
+        container = self._get_container()
+        try:
+            query = """
+                SELECT * FROM c
+                WHERE c.tenantId = @tenantId
+                AND c.status = 'active'
+            """
+            parameters = [{"name": "@tenantId", "value": tenant_id}]
+
+            items = list(
+                container.query_items(
+                    query=query, parameters=parameters, enable_cross_partition_query=True
+                )
+            )
+
+            return items
+        except Exception as e:
+            logger.error(f"Error retrieving tenant users: {str(e)}")
+            raise
+
+    async def update(self, tenant_user_id: str, update_data: dict) -> Optional[dict]:
+        """Update tenant user relationship"""
+        container = self._get_container()
+        try:
+            # First, find the item by ID
+            query = "SELECT * FROM c WHERE c.id = @id"
+            parameters = [{"name": "@id", "value": tenant_user_id}]
+            items = list(
+                container.query_items(
+                    query=query, parameters=parameters, enable_cross_partition_query=True
+                )
+            )
+            
+            if not items:
+                return None
+            
+            existing_item = items[0]
+            existing_item.update(update_data)
+            existing_item["updatedAt"] = datetime.utcnow().isoformat()
+            
+            updated_item = container.upsert_item(body=existing_item)
+            logger.info(f"Tenant user updated: {tenant_user_id}")
+            return updated_item
+        except Exception as e:
+            logger.error(f"Error updating tenant user: {str(e)}")
             raise
 
 
