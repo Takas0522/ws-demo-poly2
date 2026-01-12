@@ -37,9 +37,9 @@ class TenantSettingsSchema(BaseModel):
     timezone: str = "Asia/Tokyo"
     locale: str = "ja-JP"
     features: Optional[Dict[str, Any]] = Field(default_factory=dict)
-    allowed_domains: Optional[List[str]] = Field(default_factory=list)
+    allowed_domains: Optional[List[str]] = Field(default_factory=list, alias="allowedDomains")
     
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class TenantCreate(BaseModel):
