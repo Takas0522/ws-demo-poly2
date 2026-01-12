@@ -19,6 +19,8 @@ class CosmosDBClient:
         self.database = None
         self.users_container = None
         self.audit_container = None
+        self.tenants_container = None
+        self.tenant_users_container = None
     
     def initialize(self):
         """Initialize database and containers"""
@@ -41,6 +43,20 @@ class CosmosDBClient:
             # Get existing audit logs container
             self.audit_container = self.database.get_container_client(settings.cosmos_audit_container_name)
             logger.info(f"Container '{settings.cosmos_audit_container_name}' connected")
+            
+            # Get tenants container (create if needed for development)
+            try:
+                self.tenants_container = self.database.get_container_client("Tenants")
+                logger.info("Container 'Tenants' connected")
+            except Exception:
+                logger.warning("Tenants container not found, will be created on demand")
+            
+            # Get tenant users container (create if needed for development)
+            try:
+                self.tenant_users_container = self.database.get_container_client("TenantUsers")
+                logger.info("Container 'TenantUsers' connected")
+            except Exception:
+                logger.warning("TenantUsers container not found, will be created on demand")
             
         except Exception as e:
             logger.error(f"Error initializing CosmosDB: {str(e)}")

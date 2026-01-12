@@ -8,7 +8,7 @@ import sys
 
 from app.config import settings
 from app.utils import cosmos_client
-from app.routers import user_router, health_router
+from app.routers import user_router, health_router, tenant_router
 from app.middleware import validate_tenant_id
 
 # Configure logging
@@ -89,6 +89,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 # Include routers
 app.include_router(health_router)
 app.include_router(user_router)
+app.include_router(tenant_router)
 
 
 if __name__ == "__main__":
