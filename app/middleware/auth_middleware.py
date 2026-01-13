@@ -8,13 +8,34 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)  # Make auth optional for development
 
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> dict:
     """Extract and validate JWT token"""
+    
+    # In development mode, allow requests without authentication
+    if settings.environment == "development" and credentials is None:
+        logger.warning("Development mode: Using mock user authentication")
+        return {
+            "user_id": "dev-user-123",
+            "tenant_id": "tenant-1",
+            "email": "dev@example.com",
+            "roles": ["admin"],
+            "permissions": ["*"]
+        }
+    
+    if credentials is None:
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "code": ErrorCode.UNAUTHORIZED,
+                "message": "Authentication required"
+            }
+        )
+    
     token = credentials.credentials
     
     try:
