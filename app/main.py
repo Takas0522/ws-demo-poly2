@@ -33,15 +33,6 @@ async def lifespan(app: FastAPI):
         logger.error(f"Failed to initialize CosmosDB: {str(e)}")
         logger.warning(
             "Service will start without CosmosDB connection. Some endpoints may not work.")
-    
-    # Initialize Redis
-    try:
-        from app.utils import redis_client
-        redis_client.initialize()
-        logger.info("Redis initialized successfully")
-    except Exception as e:
-        logger.error(f"Failed to initialize Redis: {str(e)}")
-        logger.warning("Service will start without Redis connection. Caching will be disabled.")
 
     yield
 
@@ -51,12 +42,6 @@ async def lifespan(app: FastAPI):
         cosmos_client.close()
     except Exception as e:
         logger.error(f"Error closing CosmosDB connection: {str(e)}")
-    
-    try:
-        from app.utils import redis_client
-        redis_client.close()
-    except Exception as e:
-        logger.error(f"Error closing Redis connection: {str(e)}")
 
 
 # Create FastAPI application

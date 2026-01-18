@@ -18,17 +18,11 @@ class Settings(BaseSettings):
 
     # CosmosDB Configuration
     # NOTE: These defaults are for testing only. Override in production via environment variables.
-    cosmos_endpoint: str = "https://localhost:8081"
-    cosmos_key: str = "test-key"
-    cosmos_database_name: str = "UserManagement"
-    cosmos_container_name: str = "Users"
-    cosmos_audit_container_name: str = "AuditLogs"
-
-    # Redis Configuration (for caching)
-    redis_host: str = "redis"
-    redis_port: int = 6379
-    redis_password: Optional[str] = None
-    redis_db: int = 0
+    cosmosdb_endpoint: str = "https://localhost:8081"
+    cosmosdb_key: str = "test-key"
+    cosmosdb_database: str = "saas-management-dev"
+    cosmosdb_container_name: str = "Users"
+    cosmosdb_audit_container_name: str = "AuditLogs"
 
     # JWT Configuration
     # NOTE: Use a strong, randomly generated secret in production environments.
@@ -42,6 +36,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = str(ENV_FILE) if ENV_FILE.exists() else ".env"
         case_sensitive = False
+        extra = "allow"  # Allow extra fields from environment variables
 
 
 settings = Settings()

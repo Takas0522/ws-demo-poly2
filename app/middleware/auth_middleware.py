@@ -15,7 +15,7 @@ async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> dict:
     """Extract and validate JWT token"""
-    
+
     # In development mode, allow requests without authentication
     if settings.environment == "development" and credentials is None:
         logger.warning("Development mode: Using mock user authentication")
@@ -26,7 +26,7 @@ async def get_current_user(
             "roles": ["admin"],
             "permissions": ["*"]
         }
-    
+
     if credentials is None:
         raise HTTPException(
             status_code=401,
@@ -35,9 +35,9 @@ async def get_current_user(
                 "message": "Authentication required"
             }
         )
-    
+
     token = credentials.credentials
-    
+
     try:
         payload = jwt.decode(
             token,
@@ -45,7 +45,7 @@ async def get_current_user(
             algorithms=[settings.jwt_algorithm],
             issuer=settings.jwt_issuer
         )
-        
+
         user_id = payload.get("sub")
         if user_id is None:
             raise HTTPException(
@@ -55,14 +55,14 @@ async def get_current_user(
                     "message": "Invalid authentication credentials"
                 }
             )
-        
+
         return {
             "user_id": user_id,
             "tenant_id": payload.get("tenant_id"),
             "email": payload.get("email"),
             "username": payload.get("username")
         }
-    
+
     except JWTError as e:
         logger.error(f"JWT validation error: {str(e)}")
         raise HTTPException(
