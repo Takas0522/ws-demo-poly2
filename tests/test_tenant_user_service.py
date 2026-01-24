@@ -114,69 +114,28 @@ async def test_add_user_to_tenant_duplicate(
 
 
 @pytest.mark.asyncio
-async def test_get_user_tenants_cache_hit(tenant_user_service_instance):
-    """Test get user tenants with cache hit"""
+async def test_get_user_tenants(tenant_user_service_instance, sample_tenant_user_data):
+    """Test get user tenants"""
     user_id = "user-123"
-    cached_data = [
-        {
-            "id": "tenantuser-1",
-            "user_id": user_id,
-            "tenant_id": "tenant-1",
-            "roles": ["user"],
-            "permissions": [],
-            "status": "active",
-            "joined_at": datetime.now(timezone.utc).isoformat(),
-            "left_at": None,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }
-    ]
+    
+    tenant_user_service_instance.tenant_user_repo.get_by_user_id = AsyncMock(
+        return_value=[sample_tenant_user_data]
+    )
 
-    with patch("app.services.tenant_user_service.redis_client") as mock_redis:
-        mock_redis.is_enabled.return_value = True
-        mock_redis.get_json.return_value = cached_data
+    result = await tenant_user_service_instance.get_user_tenants(user_id)
 
-        result = await tenant_user_service_instance.get_user_tenants(user_id)
-
-        assert len(result) == 1
-        assert isinstance(result[0], TenantUserResponse)
-        mock_redis.get_json.assert_called_once_with(f"user:tenants:{user_id}")
-
-
-@pytest.mark.asyncio
-async def test_get_user_tenants_cache_miss(
-    tenant_user_service_instance, sample_tenant_user_data
-):
-    """Test get user tenants with cache miss"""
-    user_id = "user-123"
-
-    with patch("app.services.tenant_user_service.redis_client") as mock_redis:
-        mock_redis.is_enabled.return_value = True
-        mock_redis.get_json.return_value = None
-        
-        tenant_user_service_instance.tenant_user_repo.get_by_user_id = AsyncMock(
-            return_value=[sample_tenant_user_data]
-        )
-
-        result = await tenant_user_service_instance.get_user_tenants(user_id)
-
-        assert len(result) == 1
-        assert isinstance(result[0], TenantUserResponse)
-        mock_redis.set_json.assert_called_once()
+    assert len(result) == 1
+    assert isinstance(result[0], TenantUserResponse)
 
 
 @pytest.mark.asyncio
 async def test_get_tenant_users(tenant_user_service_instance, sample_tenant_user_data):
     """Test get tenant users"""
     tenant_id = "tenant-123"
-
-    with patch("app.services.tenant_user_service.redis_client") as mock_redis:
-        mock_redis.is_enabled.return_value = True
-        mock_redis.get_json.return_value = None
-        
-        tenant_user_service_instance.tenant_user_repo.get_by_tenant_id = AsyncMock(
-            return_value=[sample_tenant_user_data]
-        )
+    
+    tenant_user_service_instance.tenant_user_repo.get_by_tenant_id = AsyncMock(
+        return_value=[sample_tenant_user_data]
+    )
 
         result = await tenant_user_service_instance.get_tenant_users(tenant_id)
 
@@ -223,15 +182,3 @@ async def test_remove_user_from_tenant_not_found(tenant_user_service_instance):
         )
 
     assert exc_info.value.status_code == 404
-
-
-@pytest.mark.asyncio
-async def test_invalidate_caches(tenant_user_service_instance):
-    """Test cache invalidation"""
-    with patch("app.services.tenant_user_service.redis_client") as mock_redis:
-        mock_redis.is_enabled.return_value = True
-
-        await tenant_user_service_instance._invalidate_user_tenants_cache("user-123")
-        await tenant_user_service_instance._invalidate_tenant_users_cache("tenant-123")
-
-        assert mock_redis.delete.call_count == 2

@@ -212,7 +212,7 @@ async def get_user_tenants(
     user_id: str,
     current_user: dict = Depends(get_current_user)
 ):
-    """Get user's tenants (with Redis caching)"""
+    """Get user's tenants"""
     try:
         tenants = await tenant_user_service.get_user_tenants(user_id)
         

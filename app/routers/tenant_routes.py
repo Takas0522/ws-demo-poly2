@@ -195,7 +195,7 @@ async def get_tenant_users(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Get all users in a tenant (with Redis caching).
+    Get all users in a tenant.
 
     Requires:
         - users.read permission

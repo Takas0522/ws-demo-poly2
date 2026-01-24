@@ -13,7 +13,7 @@ from app.middleware import validate_tenant_id
 
 # Configure logging
 logging.basicConfig(
-    level=getattr(logging, settings.log_level),
+    level=getattr(logging, settings.log_level.upper(), logging.INFO),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[logging.StreamHandler(sys.stdout)]
 )
