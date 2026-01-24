@@ -1,21 +1,23 @@
 """User Management Service - Main Application"""
+
+import logging
+import sys
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
-import logging
-import sys
 
 from app.config import settings
-from app.utils import cosmos_client
-from app.routers import user_router, health_router, tenant_router
 from app.middleware import validate_tenant_id
+from app.routers import health_router, tenant_router, user_router
+from app.utils import cosmos_client
 
 # Configure logging
 logging.basicConfig(
     level=getattr(logging, settings.log_level.upper(), logging.INFO),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler(sys.stdout)],
 )
 
 logger = logging.getLogger(__name__)
@@ -32,7 +34,8 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to initialize CosmosDB: {str(e)}")
         logger.warning(
-            "Service will start without CosmosDB connection. Some endpoints may not work.")
+            "Service will start without CosmosDB connection. Some endpoints may not work."
+        )
 
     yield
 
@@ -52,7 +55,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
-    openapi_url="/openapi.json"
+    openapi_url="/openapi.json",
 )
 
 # Add CORS middleware
@@ -80,9 +83,9 @@ async def general_exception_handler(request: Request, exc: Exception):
             "success": False,
             "error": {
                 "code": "INTERNAL_ERROR",
-                "message": "An internal error occurred"
-            }
-        }
+                "message": "An internal error occurred",
+            },
+        },
     )
 
 
@@ -94,9 +97,10 @@ app.include_router(tenant_router)
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "app.main:app",
         host=settings.host,
         port=settings.port,
-        reload=settings.environment == "development"
+        reload=settings.environment == "development",
     )

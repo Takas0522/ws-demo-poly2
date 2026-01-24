@@ -117,7 +117,7 @@ async def test_add_user_to_tenant_duplicate(
 async def test_get_user_tenants(tenant_user_service_instance, sample_tenant_user_data):
     """Test get user tenants"""
     user_id = "user-123"
-    
+
     tenant_user_service_instance.tenant_user_repo.get_by_user_id = AsyncMock(
         return_value=[sample_tenant_user_data]
     )
@@ -132,7 +132,7 @@ async def test_get_user_tenants(tenant_user_service_instance, sample_tenant_user
 async def test_get_tenant_users(tenant_user_service_instance, sample_tenant_user_data):
     """Test get tenant users"""
     tenant_id = "tenant-123"
-    
+
     tenant_user_service_instance.tenant_user_repo.get_by_tenant_id = AsyncMock(
         return_value=[sample_tenant_user_data]
     )

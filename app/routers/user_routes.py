@@ -1,25 +1,28 @@
 """User Management Service - User Routes"""
-from fastapi import APIRouter, Depends, Request, HTTPException, Query
-from typing import Optional, List
+
+import logging
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+
+from app.middleware import get_current_user
 from app.schemas import (
+    AddUserToTenantRequest,
+    ApiResponse,
+    BulkUserCreateRequest,
     CreateUserRequest,
+    PaginatedResponse,
+    PaginationParams,
+    TenantUserResponse,
     UpdateUserRequest,
     UserResponse,
     UserSearchCriteria,
-    PaginationParams,
-    PaginatedResponse,
-    ApiResponse,
     UserStatus,
     UserType,
-    BulkUserCreateRequest,
-    TenantUserResponse,
-    AddUserToTenantRequest,
 )
 from app.services import user_service
 from app.services.tenant_user_service import tenant_user_service
-from app.middleware import get_current_user
 from app.utils.permissions import require_permission
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -28,27 +31,19 @@ router = APIRouter(prefix="/api/v1/users", tags=["users"])
 
 @router.post("", response_model=ApiResponse[UserResponse], status_code=201)
 async def create_user(
-    request: CreateUserRequest,
-    current_user: dict = Depends(get_current_user)
+    request: CreateUserRequest, current_user: dict = Depends(get_current_user)
 ):
     """Create a new user"""
     try:
         # Validate tenant ID matches authenticated user
         if request.tenant_id != current_user.get("tenant_id"):
-            raise HTTPException(
-                status_code=403,
-                detail="Tenant ID mismatch"
-            )
-        
+            raise HTTPException(status_code=403, detail="Tenant ID mismatch")
+
         user = await user_service.create_user(
-            request=request,
-            created_by=current_user["user_id"]
+            request=request, created_by=current_user["user_id"]
         )
-        
-        return ApiResponse(
-            success=True,
-            data=user
-        )
+
+        return ApiResponse(success=True, data=user)
     except HTTPException:
         raise
     except Exception as e:
@@ -58,20 +53,15 @@ async def create_user(
 
 @router.get("/{user_id}", response_model=ApiResponse[UserResponse])
 async def get_user(
-    user_id: str,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
+    user_id: str, request: Request, current_user: dict = Depends(get_current_user)
 ):
     """Get user by ID"""
     try:
         tenant_id = request.state.tenant_id
-        
+
         user = await user_service.get_user(user_id, tenant_id)
-        
-        return ApiResponse(
-            success=True,
-            data=user
-        )
+
+        return ApiResponse(success=True, data=user)
     except HTTPException:
         raise
     except Exception as e:
@@ -84,23 +74,20 @@ async def update_user(
     user_id: str,
     update_request: UpdateUserRequest,
     request: Request,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """Update user"""
     try:
         tenant_id = request.state.tenant_id
-        
+
         user = await user_service.update_user(
             user_id=user_id,
             tenant_id=tenant_id,
             request=update_request,
-            updated_by=current_user["user_id"]
+            updated_by=current_user["user_id"],
         )
-        
-        return ApiResponse(
-            success=True,
-            data=user
-        )
+
+        return ApiResponse(success=True, data=user)
     except HTTPException:
         raise
     except Exception as e:
@@ -110,24 +97,17 @@ async def update_user(
 
 @router.delete("/{user_id}", response_model=ApiResponse[bool])
 async def delete_user(
-    user_id: str,
-    request: Request,
-    current_user: dict = Depends(get_current_user)
+    user_id: str, request: Request, current_user: dict = Depends(get_current_user)
 ):
     """Delete user (soft delete)"""
     try:
         tenant_id = request.state.tenant_id
-        
+
         success = await user_service.delete_user(
-            user_id=user_id,
-            tenant_id=tenant_id,
-            deleted_by=current_user["user_id"]
+            user_id=user_id, tenant_id=tenant_id, deleted_by=current_user["user_id"]
         )
-        
-        return ApiResponse(
-            success=True,
-            data=success
-        )
+
+        return ApiResponse(success=True, data=success)
     except HTTPException:
         raise
     except Exception as e:
@@ -147,34 +127,31 @@ async def search_users(
     page_number: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=100),
     sort_by: Optional[str] = Query("created_at"),
-    sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$")
+    sort_order: Optional[str] = Query("desc", pattern="^(asc|desc)$"),
 ):
     """Search users with pagination and advanced filters"""
     try:
         tenant_id = request.state.tenant_id
-        
+
         criteria = UserSearchCriteria(
             tenant_id=tenant_id,
             email=email,
             username=username,
             status=status,
             user_type=user_type,
-            search_term=search_term
+            search_term=search_term,
         )
-        
+
         pagination = PaginationParams(
             page_number=page_number,
             page_size=page_size,
             sort_by=sort_by,
-            sort_order=sort_order
+            sort_order=sort_order,
         )
-        
+
         result = await user_service.search_users(criteria, pagination)
-        
-        return ApiResponse(
-            success=True,
-            data=result
-        )
+
+        return ApiResponse(success=True, data=result)
     except HTTPException:
         raise
     except Exception as e:
@@ -185,20 +162,15 @@ async def search_users(
 @router.post("/bulk", response_model=ApiResponse[dict])
 @require_permission("users.create")
 async def bulk_create_users(
-    request: BulkUserCreateRequest,
-    current_user: dict = Depends(get_current_user)
+    request: BulkUserCreateRequest, current_user: dict = Depends(get_current_user)
 ):
     """Bulk create users (max 100)"""
     try:
         results = await user_service.bulk_create_users(
-            request.users,
-            current_user["user_id"]
+            request.users, current_user["user_id"]
         )
-        
-        return ApiResponse(
-            success=True,
-            data={"results": results}
-        )
+
+        return ApiResponse(success=True, data={"results": results})
     except HTTPException:
         raise
     except Exception as e:
@@ -209,17 +181,13 @@ async def bulk_create_users(
 @router.get("/{user_id}/tenants", response_model=ApiResponse[List[TenantUserResponse]])
 @require_permission("users.read")
 async def get_user_tenants(
-    user_id: str,
-    current_user: dict = Depends(get_current_user)
+    user_id: str, current_user: dict = Depends(get_current_user)
 ):
     """Get user's tenants"""
     try:
         tenants = await tenant_user_service.get_user_tenants(user_id)
-        
-        return ApiResponse(
-            success=True,
-            data=tenants
-        )
+
+        return ApiResponse(success=True, data=tenants)
     except HTTPException:
         raise
     except Exception as e:

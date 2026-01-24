@@ -1,16 +1,19 @@
 """User Management Service - TenantUser Service"""
-from typing import List, Optional
+
+import logging
 from datetime import datetime, timezone
+from typing import List, Optional
 from uuid import uuid4
+
 from fastapi import HTTPException
-from app.schemas import (
-    ErrorCode,
-    TenantUserResponse,
-    AddUserToTenantRequest,
-)
+
 from app.repositories.tenant_repository import tenant_repository, tenant_user_repository
 from app.repositories.user_repository import user_repository
-import logging
+from app.schemas import (
+    AddUserToTenantRequest,
+    ErrorCode,
+    TenantUserResponse,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +38,10 @@ class TenantUserService:
         if not tenant:
             raise HTTPException(
                 status_code=404,
-                detail={"code": ErrorCode.NOT_FOUND, "message": "テナントが見つかりません"},
+                detail={
+                    "code": ErrorCode.NOT_FOUND,
+                    "message": "テナントが見つかりません",
+                },
             )
 
         # Verify user exists (check across all tenants)
@@ -113,9 +119,11 @@ class TenantUserService:
             permissions=tenant_user_data.get("permissions", []),
             status=tenant_user_data["status"],
             joined_at=datetime.fromisoformat(tenant_user_data["joinedAt"]),
-            left_at=datetime.fromisoformat(tenant_user_data["leftAt"])
-            if tenant_user_data.get("leftAt")
-            else None,
+            left_at=(
+                datetime.fromisoformat(tenant_user_data["leftAt"])
+                if tenant_user_data.get("leftAt")
+                else None
+            ),
             created_at=datetime.fromisoformat(tenant_user_data["createdAt"]),
             updated_at=datetime.fromisoformat(tenant_user_data["updatedAt"]),
         )

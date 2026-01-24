@@ -1,13 +1,21 @@
 """Tenant Management Service - Tenant Routes"""
+
+import logging
+from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
-from typing import Optional, List
-from app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse, AssignAdminRequest
-from app.schemas import ApiResponse, TenantUserResponse, AddUserToTenantRequest
+
+from app.middleware import get_current_user
+from app.schemas import AddUserToTenantRequest, ApiResponse, TenantUserResponse
+from app.schemas.tenant import (
+    AssignAdminRequest,
+    TenantCreate,
+    TenantResponse,
+    TenantUpdate,
+)
 from app.services.tenant_service import tenant_service
 from app.services.tenant_user_service import tenant_user_service
-from app.middleware import get_current_user
 from app.utils.permissions import require_permission
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +24,9 @@ router = APIRouter(prefix="/api/tenants", tags=["tenants"])
 
 @router.post("", response_model=ApiResponse[TenantResponse], status_code=201)
 @require_permission("tenants.create", scope="global")
-async def create_tenant(tenant: TenantCreate, current_user: dict = Depends(get_current_user)):
+async def create_tenant(
+    tenant: TenantCreate, current_user: dict = Depends(get_current_user)
+):
     """
     Create a new tenant (Global admin only).
 
@@ -44,7 +54,9 @@ async def list_tenants(
     status: Optional[str] = Query(None, description="Filter by status"),
     plan: Optional[str] = Query(None, description="Filter by subscription plan"),
     skip: int = Query(0, ge=0, description="Number of records to skip"),
-    limit: int = Query(50, ge=1, le=100, description="Maximum number of records to return"),
+    limit: int = Query(
+        50, ge=1, le=100, description="Maximum number of records to return"
+    ),
 ):
     """
     List all tenants with optional filtering and pagination.
@@ -99,7 +111,9 @@ async def update_tenant(
     """
     try:
         updated_tenant = await tenant_service.update_tenant(
-            tenant_id=tenant_id, request=update, updated_by=current_user.get("user_id", "system")
+            tenant_id=tenant_id,
+            request=update,
+            updated_by=current_user.get("user_id", "system"),
         )
 
         return ApiResponse(success=True, data=updated_tenant)
@@ -139,7 +153,9 @@ async def delete_tenant(tenant_id: str, current_user: dict = Depends(get_current
 @router.post("/{tenant_id}/admins", response_model=ApiResponse[dict])
 @require_permission("tenants.update")
 async def assign_tenant_admin(
-    tenant_id: str, request: AssignAdminRequest, current_user: dict = Depends(get_current_user)
+    tenant_id: str,
+    request: AssignAdminRequest,
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Assign tenant admin role to a user.
@@ -149,7 +165,9 @@ async def assign_tenant_admin(
     """
     try:
         tenant_user = await tenant_service.assign_tenant_admin(
-            tenant_id=tenant_id, request=request, assigned_by=current_user.get("user_id", "system")
+            tenant_id=tenant_id,
+            request=request,
+            assigned_by=current_user.get("user_id", "system"),
         )
 
         return ApiResponse(success=True, data=tenant_user)
@@ -160,12 +178,16 @@ async def assign_tenant_admin(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/{tenant_id}/users", response_model=ApiResponse[TenantUserResponse], status_code=201)
+@router.post(
+    "/{tenant_id}/users",
+    response_model=ApiResponse[TenantUserResponse],
+    status_code=201,
+)
 @require_permission("users.update")
 async def add_user_to_tenant(
     tenant_id: str,
     request: AddUserToTenantRequest,
-    current_user: dict = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user),
 ):
     """
     Add user to tenant.
@@ -177,7 +199,7 @@ async def add_user_to_tenant(
         tenant_user = await tenant_user_service.add_user_to_tenant(
             tenant_id=tenant_id,
             request=request,
-            assigned_by=current_user.get("user_id", "system")
+            assigned_by=current_user.get("user_id", "system"),
         )
 
         return ApiResponse(success=True, data=tenant_user)
@@ -191,8 +213,7 @@ async def add_user_to_tenant(
 @router.get("/{tenant_id}/users", response_model=ApiResponse[List[TenantUserResponse]])
 @require_permission("users.read")
 async def get_tenant_users(
-    tenant_id: str,
-    current_user: dict = Depends(get_current_user)
+    tenant_id: str, current_user: dict = Depends(get_current_user)
 ):
     """
     Get all users in a tenant.
@@ -214,9 +235,7 @@ async def get_tenant_users(
 @router.delete("/{tenant_id}/users/{user_id}", status_code=204)
 @require_permission("users.delete")
 async def remove_user_from_tenant(
-    tenant_id: str,
-    user_id: str,
-    current_user: dict = Depends(get_current_user)
+    tenant_id: str, user_id: str, current_user: dict = Depends(get_current_user)
 ):
     """
     Remove user from tenant.
@@ -228,11 +247,13 @@ async def remove_user_from_tenant(
         success = await tenant_user_service.remove_user_from_tenant(
             tenant_id=tenant_id,
             user_id=user_id,
-            removed_by=current_user.get("user_id", "system")
+            removed_by=current_user.get("user_id", "system"),
         )
 
         if not success:
-            raise HTTPException(status_code=500, detail="Failed to remove user from tenant")
+            raise HTTPException(
+                status_code=500, detail="Failed to remove user from tenant"
+            )
 
         return None
     except HTTPException:
