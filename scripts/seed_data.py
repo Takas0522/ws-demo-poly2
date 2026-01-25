@@ -75,8 +75,6 @@ def seed_data() -> None:
     except Exception as e:
         print(f"\n❌ Error creating seed data: {e}")
         raise
-    finally:
-        client.close()
 
 
 if __name__ == "__main__":

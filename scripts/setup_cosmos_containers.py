@@ -25,8 +25,13 @@ def create_containers() -> None:
     
     try:
         # Get or create database
-        print(f"Using database: {settings.cosmosdb_database}")
-        database = client.get_database_client(settings.cosmosdb_database)
+        print(f"Creating/getting database: {settings.cosmosdb_database}")
+        try:
+            database = client.create_database(id=settings.cosmosdb_database)
+            print(f"✓ Created database: {settings.cosmosdb_database}")
+        except CosmosResourceExistsError:
+            print(f"⚠ Database already exists: {settings.cosmosdb_database}")
+            database = client.get_database_client(settings.cosmosdb_database)
         
         # Create tenants container with partition key /id
         print(f"Creating container: {settings.cosmosdb_container_tenants}")
@@ -57,8 +62,6 @@ def create_containers() -> None:
     except Exception as e:
         print(f"\n❌ Error setting up containers: {e}")
         raise
-    finally:
-        client.close()
 
 
 if __name__ == "__main__":
