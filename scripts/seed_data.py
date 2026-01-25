@@ -7,16 +7,17 @@ This script creates initial seed data including:
 """
 import sys
 import os
-from datetime import datetime, timezone
-from azure.cosmos import CosmosClient
-from azure.cosmos.exceptions import CosmosResourceExistsError
 
 # Add parent directory to path to import app modules
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.core.config import settings
-from app.models.tenant import Tenant
-from app.models.tenant_user import TenantUser
+from datetime import datetime, timezone  # noqa: E402
+from azure.cosmos import CosmosClient  # noqa: E402
+from azure.cosmos.exceptions import CosmosResourceExistsError  # noqa: E402
+
+from app.core.config import settings  # noqa: E402
+from app.models.tenant import Tenant  # noqa: E402
+from app.models.tenant_user import TenantUser  # noqa: E402
 
 
 def seed_data() -> None:
