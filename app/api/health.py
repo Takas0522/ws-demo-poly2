@@ -4,6 +4,7 @@ Health check API endpoints.
 from typing import Dict, Any
 from fastapi import APIRouter, status
 
+from app.core.config import settings
 from app.db import db_client
 from app.services import auth_client
 
@@ -37,7 +38,7 @@ async def health_check() -> Dict[str, Any]:
     return {
         "status": overall_status,
         "service": "user-management-service",
-        "version": "0.1.0",
+        "version": settings.app_version,
         "dependencies": {
             "database": "healthy" if db_healthy else "unhealthy",
             "auth_service": "healthy" if auth_healthy else "unavailable",
