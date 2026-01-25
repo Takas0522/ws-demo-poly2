@@ -38,7 +38,8 @@ class CosmosDBClient:
     def disconnect(self) -> None:
         """Disconnect from Cosmos DB."""
         if self._client:
-            self._client.close()
+            # CosmosClient doesn't require explicit close in newer versions
+            # Just reset references
             self._client = None
             self._database = None
             self._tenants_container = None

@@ -68,9 +68,19 @@ def require_role(*allowed_roles: Role) -> Callable:
         HTTPException: If user doesn't have required role.
     """
     async def role_checker(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
-        user_role = current_user.get("role")
+        # Get roles from JWT payload
+        # Roles are structured as: {"auth-service": ["全体管理者"], "user-service": ["管理者"]}
+        user_roles = current_user.get("roles", {})
         
-        if user_role not in [role.value for role in allowed_roles]:
+        # Extract all role names from all services
+        all_user_roles = []
+        for service_roles in user_roles.values():
+            if isinstance(service_roles, list):
+                all_user_roles.extend(service_roles)
+        
+        # Check if user has any of the allowed roles
+        allowed_role_values = [role.value for role in allowed_roles]
+        if not any(role in allowed_role_values for role in all_user_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="この操作を実行する権限がありません",
