@@ -32,6 +32,8 @@ class TestAllowedDomain:
             "my-domain.com",
             "123domain.com",
             "a1-b2.example.org",
+            "a.com",  # Single letter domain part
+            "x.y.com",  # Single letter subdomain
         ]
         
         for domain_str in valid_domains:

@@ -39,7 +39,11 @@ class AllowedDomain(BaseModel):
         """
         Validate domain format.
         
-        Domain must match pattern: ^[a-zA-Z0-9][a-zA-Z0-9.-]*[a-zA-Z0-9]\\.[a-zA-Z]{2,}$
+        Validates that the domain is a valid domain name format, allowing:
+        - Simple domains: example.com
+        - Subdomains: sub.example.com
+        - Hyphenated domains: my-domain.com
+        - Multi-level subdomains: a.b.c.example.com
         
         Args:
             v: Domain string to validate
@@ -50,9 +54,10 @@ class AllowedDomain(BaseModel):
         Raises:
             ValueError: If domain format is invalid
         """
-        # Pattern allows for subdomains and hyphenated domains
-        # Must start/end with alphanumeric, can contain dots/hyphens in between
-        pattern = r"^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?\.([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)*[a-zA-Z]{2,}$"
+        # Pattern allows for domains and subdomains with proper structure
+        # Domain parts must start/end with alphanumeric, can contain hyphens in between
+        # Must have at least one dot and a valid TLD (2+ letters)
+        pattern = r"^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$"
         if not re.match(pattern, v):
             raise ValueError(
                 f"Invalid domain format: {v}. "
