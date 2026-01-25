@@ -1,8 +1,9 @@
 """
 Tenant management API endpoints.
 """
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from math import ceil
+from enum import Enum
 
 from fastapi import APIRouter, HTTPException, status, Depends, Query
 
@@ -17,7 +18,40 @@ from app.api.schemas import (
     PaginationInfo,
 )
 
+
+class SortField(str, Enum):
+    """Allowed fields for sorting tenants."""
+    ID = "id"
+    NAME = "name"
+    IS_PRIVILEGED = "isPrivileged"
+    CREATED_AT = "createdAt"
+    UPDATED_AT = "updatedAt"
+
+
 router = APIRouter(prefix="/api/tenants", tags=["tenants"])
+
+
+def _get_tenant_or_404(tenant_id: str, tenant: Optional[Any]) -> None:
+    """
+    Helper function to check if tenant exists and raise 404 if not.
+    
+    Args:
+        tenant_id: Tenant ID for error message.
+        tenant: Tenant object or None.
+    
+    Raises:
+        HTTPException: 404 if tenant is None.
+    """
+    if tenant is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "TENANT_NOT_FOUND",
+                "message": "指定されたテナントが見つかりません",
+                "details": {"tenantId": tenant_id},
+            },
+        )
+
 
 
 @router.get(
@@ -30,7 +64,7 @@ router = APIRouter(prefix="/api/tenants", tags=["tenants"])
 async def list_tenants(
     page: int = Query(1, ge=1, description="ページ番号（1始まり）"),
     pageSize: int = Query(20, ge=1, le=100, description="1ページあたりの件数（最大100）"),
-    sortBy: str = Query("createdAt", description="ソートフィールド"),
+    sortBy: SortField = Query(SortField.CREATED_AT, description="ソートフィールド"),
     sortOrder: str = Query("desc", pattern="^(asc|desc)$", description="ソート順（asc/desc）"),
     current_user: Dict[str, Any] = Depends(
         require_role(Role.GLOBAL_ADMIN, Role.ADMIN, Role.VIEWER)
@@ -55,7 +89,7 @@ async def list_tenants(
     tenants, total_count = await tenant_repository.get_all(
         page=page,
         page_size=pageSize,
-        sort_by=sortBy,
+        sort_by=sortBy.value,
         sort_order=sortOrder,
     )
     
@@ -116,16 +150,7 @@ async def get_tenant(
         HTTPException: If tenant not found (404).
     """
     tenant = await tenant_repository.get_by_id(tenant_id)
-    
-    if tenant is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": "TENANT_NOT_FOUND",
-                "message": "指定されたテナントが見つかりません",
-                "details": {"tenantId": tenant_id},
-            },
-        )
+    _get_tenant_or_404(tenant_id, tenant)
     
     return TenantDetailResponse(
         data=TenantDetail(
@@ -172,16 +197,7 @@ async def update_tenant(
     """
     # Get existing tenant
     tenant = await tenant_repository.get_by_id(tenant_id)
-    
-    if tenant is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": "TENANT_NOT_FOUND",
-                "message": "指定されたテナントが見つかりません",
-                "details": {"tenantId": tenant_id},
-            },
-        )
+    _get_tenant_or_404(tenant_id, tenant)
     
     # Check privileged tenant protection
     user_role = current_user.get("role")
@@ -214,16 +230,7 @@ async def update_tenant(
     
     # Update tenant
     updated_tenant = await tenant_repository.update(tenant_id, updates)
-    
-    if updated_tenant is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": "TENANT_NOT_FOUND",
-                "message": "指定されたテナントが見つかりません",
-                "details": {"tenantId": tenant_id},
-            },
-        )
+    _get_tenant_or_404(tenant_id, updated_tenant)
     
     return TenantDetailResponse(
         data=TenantDetail(

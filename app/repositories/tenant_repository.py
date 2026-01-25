@@ -2,12 +2,16 @@
 Tenant repository for database operations.
 """
 from typing import List, Optional, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from azure.cosmos.exceptions import CosmosResourceNotFoundError
 
 from app.db import db_client
 from app.models.tenant import Tenant
+
+
+# Allowed fields for sorting to prevent SQL injection
+ALLOWED_SORT_FIELDS = {"id", "name", "isPrivileged", "createdAt", "updatedAt"}
 
 
 class TenantRepository:
@@ -26,13 +30,17 @@ class TenantRepository:
         Args:
             page: Page number (1-indexed).
             page_size: Number of items per page.
-            sort_by: Field to sort by.
+            sort_by: Field to sort by (must be in ALLOWED_SORT_FIELDS).
             sort_order: Sort order (asc/desc).
         
         Returns:
             Tuple of (list of tenants, total count).
         """
-        # Build query
+        # Validate sort_by to prevent SQL injection
+        if sort_by not in ALLOWED_SORT_FIELDS:
+            sort_by = "createdAt"  # Default to safe value
+        
+        # Build query with validated parameter
         order = "DESC" if sort_order.lower() == "desc" else "ASC"
         query = f"SELECT * FROM c ORDER BY c.{sort_by} {order}"
         
@@ -111,7 +119,7 @@ class TenantRepository:
                     existing[key] = value
             
             # Update timestamp
-            existing["updatedAt"] = datetime.utcnow().isoformat() + "Z"
+            existing["updatedAt"] = datetime.now(timezone.utc).isoformat() + "Z"
             
             # Save
             updated_item = db_client.tenants_container.replace_item(
