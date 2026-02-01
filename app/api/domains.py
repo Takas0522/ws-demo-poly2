@@ -137,10 +137,10 @@ async def verify_domain(
         )
     except ValueError as e:
         error_message = str(e)
-        if "not found" in error_message.lower():
-            raise HTTPException(status_code=404, detail=error_message)
-        elif "verification failed" in error_message.lower():
+        if "verification failed" in error_message.lower():
             raise HTTPException(status_code=422, detail=error_message)
+        elif "not found" in error_message.lower():
+            raise HTTPException(status_code=404, detail=error_message)
         else:
             raise HTTPException(status_code=400, detail=error_message)
     except Exception as e:
