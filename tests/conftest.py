@@ -6,6 +6,8 @@ from httpx import AsyncClient, ASGITransport
 from unittest.mock import MagicMock
 
 from app.models.tenant import Tenant
+from app.models.tenant_user import TenantUser
+from app.models.domain import Domain
 from app.utils.jwt import TokenData
 
 
@@ -267,4 +269,147 @@ VALID_MAX_USERS = [
     100,    # デフォルト
     5000,
     10000,  # 最大
+]
+
+
+# ===========================
+# TenantUser フィクスチャ
+# ===========================
+
+@pytest.fixture
+def sample_tenant_user():
+    """サンプルTenantUser"""
+    return TenantUser(
+        id="tenant_user_tenant_test_user_123",
+        tenant_id="tenant_test",
+        user_id="user_123",
+        assigned_at=datetime(2026, 2, 1, 10, 0, 0),
+        assigned_by="user_admin_001",
+    )
+
+
+@pytest.fixture
+def sample_tenant_user_data():
+    """サンプルTenantUser作成データ"""
+    return {
+        "userId": "user_456",
+    }
+
+
+# ===========================
+# Domain フィクスチャ
+# ===========================
+
+@pytest.fixture
+def sample_domain():
+    """サンプルDomain（未検証）"""
+    return Domain(
+        id="domain_test_example_com",
+        tenant_id="tenant_test",
+        domain="example.com",
+        verified=False,
+        verification_token="txt-verification-abc123def456",
+        verified_at=None,
+        verified_by=None,
+        created_at=datetime(2026, 2, 1, 10, 0, 0),
+        created_by="user_admin_001",
+    )
+
+
+@pytest.fixture
+def verified_domain():
+    """検証済みDomain"""
+    return Domain(
+        id="domain_test_verified_com",
+        tenant_id="tenant_test",
+        domain="verified.com",
+        verified=True,
+        verification_token="txt-verification-xyz789",
+        verified_at=datetime(2026, 2, 1, 11, 0, 0),
+        verified_by="user_admin_001",
+        created_at=datetime(2026, 2, 1, 10, 0, 0),
+        created_by="user_admin_001",
+    )
+
+
+@pytest.fixture
+def sample_domain_data():
+    """サンプルDomain作成データ"""
+    return {
+        "domain": "newdomain.com",
+    }
+
+
+# ===========================
+# 認証サービスクライアント モック
+# ===========================
+
+@pytest.fixture
+def mock_auth_service_user_response():
+    """認証サービスからのユーザー詳細レスポンス"""
+    return {
+        "id": "user_123",
+        "tenantId": "tenant_test",
+        "username": "test.user",
+        "email": "test.user@example.com",
+        "isActive": True,
+        "createdAt": "2026-01-01T00:00:00Z"
+    }
+
+
+@pytest.fixture
+def mock_httpx_client_success():
+    """HTTPXクライアントのモック（成功）"""
+    from unittest.mock import AsyncMock
+    mock = AsyncMock()
+    mock.get = AsyncMock()
+    return mock
+
+
+# ===========================
+# DNS モック
+# ===========================
+
+@pytest.fixture
+def mock_dns_resolver():
+    """DNSリゾルバーのモック"""
+    from unittest.mock import MagicMock
+    mock = MagicMock()
+    return mock
+
+
+@pytest.fixture
+def mock_dns_txt_records():
+    """DNS TXTレコードのモックデータ"""
+    return [
+        "txt-verification-abc123def456",
+        "v=spf1 include:_spf.google.com ~all"
+    ]
+
+
+# ===========================
+# 境界値テストデータ (タスク06)
+# ===========================
+
+INVALID_DOMAINS = [
+    ("", "空文字列"),
+    ("ab", "短すぎる(2文字)"),
+    ("a" * 254, "長すぎる(254文字)"),
+    ("localhost", "禁止ドメイン"),
+    ("example.com", "禁止ドメイン"),
+    ("127.0.0.1", "IPアドレス（禁止）"),
+    ("test..com", "連続ドット"),
+    (".test.com", "先頭ドット"),
+    ("test.com.", "末尾ドット"),
+    ("test_domain.com", "アンダースコア含む"),
+    ("test domain.com", "スペース含む"),
+    ("тест.com", "Cyrillic文字（ホモグラフ攻撃）"),
+]
+
+VALID_DOMAINS = [
+    ("abc.com", "最小構成"),
+    ("a-b.co.jp", "ハイフン含む"),
+    ("subdomain.example.org", "サブドメイン"),
+    ("long-domain-name-with-multiple-parts.example.com", "長いドメイン"),
+    ("test123.net", "数字含む"),
 ]
