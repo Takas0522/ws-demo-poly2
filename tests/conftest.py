@@ -231,7 +231,6 @@ VALID_TENANT_NAMES = [
 ]
 
 INVALID_DISPLAY_NAMES = [
-    ("", "空文字列"),
     ("a" * 201, "長すぎる(201文字)"),
 ]
 

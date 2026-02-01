@@ -11,11 +11,13 @@ from datetime import datetime
 
 from app.repositories.tenant_repository import TenantRepository
 from app.models.tenant import Tenant
+from tests.conftest import create_mock_query_result
 
 
 class TestTenantRepository:
     """TenantRepositoryのテスト"""
 
+    @pytest.fixture(autouse=True)
     def setup_method(self):
         """各テストの前に実行"""
         self.mock_container = MagicMock()
@@ -25,7 +27,7 @@ class TestTenantRepository:
         """CRUD操作のテスト"""
 
         @pytest.mark.asyncio
-        async def test_create_正常なテナント作成(self):
+        async def test_create_正常なテナント作成(self, sample_tenant):
             """
             テストケース: TC-R001
             目的: 正常なテナント作成ができることを検証
@@ -39,16 +41,20 @@ class TestTenantRepository:
               - create_item()が1回呼ばれる
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.create_item = AsyncMock(return_value=sample_tenant.model_dump(by_alias=True))
 
             # Act
-            pass
+            result = await repository.create(sample_tenant)
 
             # Assert
-            pass
+            assert result.id == sample_tenant.id
+            assert result.name == sample_tenant.name
+            mock_container.create_item.assert_called_once()
 
         @pytest.mark.asyncio
-        async def test_create_CosmosDBエラー時の例外処理(self):
+        async def test_create_CosmosDBエラー時の例外処理(self, sample_tenant):
             """
             テストケース: TC-R002
             目的: Cosmos DBエラー時に例外が伝播することを検証
@@ -60,13 +66,16 @@ class TestTenantRepository:
               - CosmosHttpResponseErrorが伝播する
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.create_item = AsyncMock(side_effect=CosmosHttpResponseError(status_code=500, message="Internal error"))
 
             # Act & Assert
-            pass
+            with pytest.raises(CosmosHttpResponseError):
+                await repository.create(sample_tenant)
 
         @pytest.mark.asyncio
-        async def test_get_存在するテナント取得(self):
+        async def test_get_存在するテナント取得(self, sample_tenant):
             """
             テストケース: TC-R003
             目的: 存在するテナントを取得できることを検証
@@ -79,13 +88,17 @@ class TestTenantRepository:
               - read_item()が正しいパラメータで呼ばれる
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.read_item = AsyncMock(return_value=sample_tenant.model_dump(by_alias=True))
 
             # Act
-            pass
+            result = await repository.get("tenant_test", "tenant_test")
 
             # Assert
-            pass
+            assert result is not None
+            assert result.id == "tenant_test"
+            mock_container.read_item.assert_called_once_with(item="tenant_test", partition_key="tenant_test")
 
         @pytest.mark.asyncio
         async def test_get_存在しないテナント取得(self):
@@ -100,13 +113,15 @@ class TestTenantRepository:
               - Noneが返却される
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.read_item = AsyncMock(side_effect=CosmosHttpResponseError(status_code=404, message="Not found"))
 
             # Act
-            pass
+            result = await repository.get("tenant_notexist", "tenant_notexist")
 
             # Assert
-            pass
+            assert result is None
 
         @pytest.mark.asyncio
         async def test_get_不正なパーティションキー(self):
@@ -121,16 +136,18 @@ class TestTenantRepository:
               - Noneが返却される
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.read_item = AsyncMock(side_effect=CosmosHttpResponseError(status_code=404, message="Not found"))
 
             # Act
-            pass
+            result = await repository.get("tenant_test", "wrong_partition")
 
             # Assert
-            pass
+            assert result is None
 
         @pytest.mark.asyncio
-        async def test_update_テナント情報更新(self):
+        async def test_update_テナント情報更新(self, sample_tenant):
             """
             テストケース: TC-R006
             目的: テナント情報を更新できることを検証
@@ -144,13 +161,20 @@ class TestTenantRepository:
               - updatedAtが自動更新される
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.read_item = AsyncMock(return_value=sample_tenant.model_dump(by_alias=True))
+            
+            updated_data = sample_tenant.model_dump(by_alias=True)
+            updated_data["displayName"] = "Updated Name"
+            mock_container.upsert_item = AsyncMock(return_value=updated_data)
 
             # Act
-            pass
+            result = await repository.update("tenant_test", "tenant_test", {"displayName": "Updated Name"})
 
             # Assert
-            pass
+            assert result.display_name == "Updated Name"
+            mock_container.upsert_item.assert_called_once()
 
         @pytest.mark.asyncio
         async def test_update_存在しないテナント更新(self):
@@ -166,10 +190,14 @@ class TestTenantRepository:
               - エラーメッセージに"not found"が含まれる
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.read_item = AsyncMock(side_effect=CosmosHttpResponseError(status_code=404, message="Not found"))
 
             # Act & Assert
-            pass
+            with pytest.raises(ValueError) as exc_info:
+                await repository.update("tenant_notexist", "tenant_notexist", {"displayName": "Test"})
+            assert "not found" in str(exc_info.value)
 
         @pytest.mark.asyncio
         async def test_delete_テナント削除(self):
@@ -185,13 +213,15 @@ class TestTenantRepository:
               - delete_item()が正しいパラメータで呼ばれる
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.delete_item = AsyncMock()
 
             # Act
-            pass
+            await repository.delete("tenant_test", "tenant_test")
 
             # Assert
-            pass
+            mock_container.delete_item.assert_called_once_with(item="tenant_test", partition_key="tenant_test")
 
         @pytest.mark.asyncio
         async def test_delete_存在しないテナント削除(self):
@@ -206,16 +236,19 @@ class TestTenantRepository:
               - CosmosHttpResponseErrorが伝播する
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.delete_item = AsyncMock(side_effect=CosmosHttpResponseError(status_code=404, message="Not found"))
 
             # Act & Assert
-            pass
+            with pytest.raises(CosmosHttpResponseError):
+                await repository.delete("tenant_notexist", "tenant_notexist")
 
     class Test検索操作:
         """検索操作のテスト"""
 
         @pytest.mark.asyncio
-        async def test_find_by_name_テナント名検索成功(self):
+        async def test_find_by_name_テナント名検索成功(self, sample_tenant):
             """
             テストケース: TC-R010
             目的: テナント名で検索できることを検証
@@ -228,13 +261,19 @@ class TestTenantRepository:
               - クロスパーティションクエリが実行される
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.query_items = MagicMock(return_value=create_mock_query_result([sample_tenant.model_dump(by_alias=True)]))
 
             # Act
-            pass
+            result = await repository.find_by_name("test")
 
             # Assert
-            pass
+            assert result is not None
+            assert result.name == "test"
+            mock_container.query_items.assert_called_once()
+            call_kwargs = mock_container.query_items.call_args[1]
+            assert call_kwargs["enable_cross_partition_query"] is True
 
         @pytest.mark.asyncio
         async def test_find_by_name_存在しない名前(self):
@@ -249,13 +288,15 @@ class TestTenantRepository:
               - Noneが返却される
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.query_items = MagicMock(return_value=create_mock_query_result([]))
 
             # Act
-            pass
+            result = await repository.find_by_name("nonexistent")
 
             # Assert
-            pass
+            assert result is None
 
         @pytest.mark.asyncio
         async def test_find_by_name_アクティブのみフィルタ(self):
@@ -270,13 +311,16 @@ class TestTenantRepository:
               - クエリにstatus='active'条件が含まれる
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.query_items = MagicMock(return_value=create_mock_query_result([]))
 
             # Act
-            pass
+            await repository.find_by_name("test")
 
             # Assert
-            pass
+            call_args = mock_container.query_items.call_args
+            assert "status = 'active'" in call_args[1]["query"]
 
         @pytest.mark.asyncio
         async def test_find_by_name_クロスパーティションクエリ(self):
@@ -291,16 +335,19 @@ class TestTenantRepository:
               - enable_cross_partition_query=Trueで呼ばれる
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.query_items = MagicMock(return_value=create_mock_query_result([]))
 
             # Act
-            pass
+            await repository.find_by_name("test")
 
             # Assert
-            pass
+            call_kwargs = mock_container.query_items.call_args[1]
+            assert call_kwargs["enable_cross_partition_query"] is True
 
         @pytest.mark.asyncio
-        async def test_list_all_全テナント一覧取得(self):
+        async def test_list_all_全テナント一覧取得(self, sample_tenant, regular_tenant):
             """
             テストケース: TC-R014
             目的: 全テナント一覧を取得できることを検証
@@ -313,13 +360,20 @@ class TestTenantRepository:
               - クロスパーティションクエリが実行される
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.query_items = MagicMock(return_value=create_mock_query_result([
+                sample_tenant.model_dump(by_alias=True),
+                regular_tenant.model_dump(by_alias=True)
+            ]))
 
             # Act
-            pass
+            result = await repository.list_all()
 
             # Assert
-            pass
+            assert len(result) == 2
+            call_kwargs = mock_container.query_items.call_args[1]
+            assert call_kwargs["enable_cross_partition_query"] is True
 
         @pytest.mark.asyncio
         async def test_list_all_ステータスフィルタ(self):
@@ -334,13 +388,16 @@ class TestTenantRepository:
               - クエリにstatus条件が含まれる
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.query_items = MagicMock(return_value=create_mock_query_result([]))
 
             # Act
-            pass
+            await repository.list_all(status="active")
 
             # Assert
-            pass
+            call_args = mock_container.query_items.call_args
+            assert "status = @status" in call_args[1]["query"]
 
         @pytest.mark.asyncio
         async def test_list_all_ページネーション(self):
@@ -355,16 +412,19 @@ class TestTenantRepository:
               - クエリにOFFSET, LIMIT句が含まれる
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.query_items = MagicMock(return_value=create_mock_query_result([]))
 
             # Act
-            pass
+            await repository.list_all(skip=10, limit=20)
 
             # Assert
-            pass
+            call_args = mock_container.query_items.call_args
+            assert "OFFSET @skip LIMIT @limit" in call_args[1]["query"]
 
         @pytest.mark.asyncio
-        async def test_list_by_tenant_id_単一パーティション(self):
+        async def test_list_by_tenant_id_単一パーティション(self, regular_tenant):
             """
             テストケース: TC-R017
             目的: 特定テナントIDで絞り込めることを検証
@@ -377,13 +437,17 @@ class TestTenantRepository:
               - partition_key=tenant_idが指定される
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.query_items = MagicMock(return_value=create_mock_query_result([regular_tenant.model_dump(by_alias=True)]))
 
             # Act
-            pass
+            result = await repository.list_by_tenant_id("tenant_acme")
 
             # Assert
-            pass
+            assert len(result) == 1
+            call_kwargs = mock_container.query_items.call_args[1]
+            assert call_kwargs["partition_key"] == "tenant_acme"
 
         @pytest.mark.asyncio
         async def test_list_by_tenant_id_空のテナント(self):
@@ -398,13 +462,15 @@ class TestTenantRepository:
               - 空配列が返却される
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.query_items = MagicMock(return_value=create_mock_query_result([]))
 
             # Act
-            pass
+            result = await repository.list_by_tenant_id("tenant_nonexistent")
 
             # Assert
-            pass
+            assert result == []
 
     class Test境界値:
         """境界値テスト"""
@@ -422,13 +488,17 @@ class TestTenantRepository:
               - 各境界値で正しいOFFSET値が設定される
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.query_items = MagicMock(return_value=create_mock_query_result([]))
 
             # Act
-            pass
+            await repository.list_all(skip=0)
+            await repository.list_all(skip=1)
+            await repository.list_all(skip=10000)
 
             # Assert
-            pass
+            assert mock_container.query_items.call_count == 3
 
         @pytest.mark.asyncio
         async def test_list_all_limit境界値(self):
@@ -443,10 +513,14 @@ class TestTenantRepository:
               - 各境界値で正しいLIMIT値が設定される
             """
             # Arrange
-            pass
+            mock_container = MagicMock()
+            repository = TenantRepository(mock_container)
+            mock_container.query_items = MagicMock(return_value=create_mock_query_result([]))
 
             # Act
-            pass
+            await repository.list_all(limit=1)
+            await repository.list_all(limit=100)
+            await repository.list_all(limit=1000)
 
             # Assert
-            pass
+            assert mock_container.query_items.call_count == 3
