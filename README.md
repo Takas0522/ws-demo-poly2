@@ -12,13 +12,22 @@
 - ✅ JWT認証
 - ✅ テナント分離
 - ✅ 監査ログ（作成者・更新者の追跡）
+- ✅ テナント所属ユーザー管理（タスク06）
+  - ユーザー招待（認証サービス連携）
+  - ユーザー一覧取得（ユーザー詳細並列取得）
+  - ユーザー削除
+  - user_count自動更新
+- ✅ ドメイン管理（タスク06）
+  - 独自ドメイン追加
+  - DNS TXTレコード検証
+  - ドメイン一覧取得
+  - ドメイン削除
 
 ### Phase 2で実装予定
 - ⏭ ロールベース認可（閲覧者、管理者、全体管理者）
-- ⏭ テナント所属ユーザー管理（タスク06）
-- ⏭ ドメイン管理（タスク06）
 - ⏭ テナントの論理削除と物理削除の分離
 - ⏭ 関連データのカスケード削除
+- ⏭ ドメインベースのメールアドレス制限
 
 ## アーキテクチャ
 
@@ -239,15 +248,172 @@ curl -X DELETE "http://localhost:8001/api/v1/tenants/tenant_example-corp" \
 
 **レスポンス** (204 No Content)
 
+#### 6. POST /tenants/{tenant_id}/users - ユーザー招待
+
+**リクエスト**:
+```bash
+curl -X POST "http://localhost:8001/api/v1/tenants/tenant_acme/users" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "user_550e8400-e29b-41d4-a716-446655440000"
+  }'
+```
+
+**レスポンス** (201 Created):
+```json
+{
+  "id": "tenant_user_tenant_acme_user_550e8400",
+  "tenantId": "tenant_acme",
+  "userId": "user_550e8400-e29b-41d4-a716-446655440000",
+  "userDetails": {
+    "username": "john.doe",
+    "displayName": "John Doe",
+    "email": "john@example.com"
+  },
+  "assignedAt": "2026-02-01T10:00:00Z",
+  "assignedBy": "system"
+}
+```
+
+#### 7. GET /tenants/{tenant_id}/users - テナント所属ユーザー一覧
+
+**リクエスト**:
+```bash
+curl -X GET "http://localhost:8001/api/v1/tenants/tenant_acme/users?skip=0&limit=20&include_total=true" \
+  -H "Authorization: Bearer <token>"
+```
+
+**レスポンス** (200 OK):
+```json
+{
+  "data": [
+    {
+      "id": "tenant_user_tenant_acme_user_550e8400",
+      "tenantId": "tenant_acme",
+      "userId": "user_550e8400-e29b-41d4-a716-446655440000",
+      "userDetails": {
+        "username": "john.doe",
+        "email": "john@example.com"
+      },
+      "assignedAt": "2026-01-15T10:00:00Z",
+      "assignedBy": "system"
+    }
+  ],
+  "pagination": {
+    "skip": 0,
+    "limit": 20,
+    "total": 5
+  }
+}
+```
+
+#### 8. DELETE /tenants/{tenant_id}/users/{user_id} - ユーザー削除
+
+**リクエスト**:
+```bash
+curl -X DELETE "http://localhost:8001/api/v1/tenants/tenant_acme/users/user_550e8400-e29b-41d4-a716-446655440000" \
+  -H "Authorization: Bearer <token>"
+```
+
+**レスポンス** (204 No Content)
+
+#### 9. POST /tenants/{tenant_id}/domains - ドメイン追加
+
+**リクエスト**:
+```bash
+curl -X POST "http://localhost:8001/api/v1/tenants/tenant_acme/domains" \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "domain": "example.com"
+  }'
+```
+
+**レスポンス** (201 Created):
+```json
+{
+  "id": "domain_tenant_acme_example_com",
+  "tenantId": "tenant_acme",
+  "domain": "example.com",
+  "verified": false,
+  "verificationToken": "txt-verification-a1b2c3d4e5f6...",
+  "verificationInstructions": {
+    "step1": "DNSプロバイダーにログイン",
+    "step2": "以下のTXTレコードを追加:",
+    "recordName": "_tenant_verification.example.com",
+    "recordType": "TXT",
+    "recordValue": "txt-verification-a1b2c3d4e5f6..."
+  },
+  "createdAt": "2026-02-01T11:00:00Z",
+  "createdBy": "system"
+}
+```
+
+#### 10. POST /tenants/{tenant_id}/domains/{domain_id}/verify - ドメイン検証
+
+**リクエスト**:
+```bash
+curl -X POST "http://localhost:8001/api/v1/tenants/tenant_acme/domains/domain_tenant_acme_example_com/verify" \
+  -H "Authorization: Bearer <token>"
+```
+
+**レスポンス** (200 OK):
+```json
+{
+  "id": "domain_tenant_acme_example_com",
+  "domain": "example.com",
+  "verified": true,
+  "verifiedAt": "2026-02-01T11:30:00Z",
+  "verifiedBy": "system"
+}
+```
+
+#### 11. GET /tenants/{tenant_id}/domains - ドメイン一覧取得
+
+**リクエスト**:
+```bash
+curl -X GET "http://localhost:8001/api/v1/tenants/tenant_acme/domains?verified=true" \
+  -H "Authorization: Bearer <token>"
+```
+
+**レスポンス** (200 OK):
+```json
+{
+  "data": [
+    {
+      "id": "domain_tenant_acme_example_com",
+      "tenantId": "tenant_acme",
+      "domain": "example.com",
+      "verified": true,
+      "verifiedAt": "2026-02-01T11:30:00Z",
+      "createdAt": "2026-02-01T11:00:00Z"
+    }
+  ]
+}
+```
+
+#### 12. DELETE /tenants/{tenant_id}/domains/{domain_id} - ドメイン削除
+
+**リクエスト**:
+```bash
+curl -X DELETE "http://localhost:8001/api/v1/tenants/tenant_acme/domains/domain_tenant_acme_example_com" \
+  -H "Authorization: Bearer <token>"
+```
+
+**レスポンス** (204 No Content)
+
 ### エラーコード
 
 | コード | HTTPステータス | 説明 |
 |--------|--------------|------|
 | 401 | Unauthorized | JWT認証失敗 |
 | 403 | Forbidden | 特権テナントへのアクセス、テナント分離違反 |
-| 404 | Not Found | テナントが存在しない |
-| 409 | Conflict | テナント名の重複 |
-| 422 | Unprocessable Entity | バリデーションエラー |
+| 404 | Not Found | テナント、ユーザー、ドメインが存在しない |
+| 409 | Conflict | テナント名の重複、ユーザーの重複招待 |
+| 422 | Unprocessable Entity | バリデーションエラー、ドメイン検証失敗 |
+| 400 | Bad Request | 最大ユーザー数超過、不正なパラメータ |
+| 503 | Service Unavailable | 認証サービス不可 |
 
 ## ビジネスロジック
 
@@ -301,13 +467,74 @@ async def decrement_user_count(self, tenant_id: str) -> None:
 
 ## テスト
 
-```bash
-# テスト実行（実装予定）
-pytest tests/
+### 単体テスト実行
 
-# カバレッジ付き
-pytest --cov=app tests/
+```bash
+# 全テスト実行
+pytest tests/ -v
+
+# カバレッジ付きで実行
+pytest tests/ -v --cov=app --cov-report=html --cov-report=term
+
+# カバレッジレポート表示
+open htmlcov/index.html
 ```
+
+### レイヤー別テスト実行
+
+```bash
+# Model層テスト
+pytest tests/test_models_*.py -v
+
+# Schema層テスト
+pytest tests/test_schemas_*.py -v
+
+# Repository層テスト
+pytest tests/test_repositories_*.py -v
+
+# Service層テスト
+pytest tests/test_services_*.py -v
+
+# API層テスト
+pytest tests/test_api_*.py -v
+```
+
+### タスク06関連テスト
+
+```bash
+# TenantUser管理テスト
+pytest tests/test_models_tenant_user.py \
+       tests/test_schemas_tenant_user.py \
+       tests/test_repositories_tenant_user.py \
+       tests/test_services_tenant_user.py \
+       tests/test_api_tenant_users.py \
+       -v --cov=app
+
+# Domain管理テスト
+pytest tests/test_models_domain.py \
+       tests/test_schemas_domain.py \
+       tests/test_repositories_domain.py \
+       tests/test_services_domain.py \
+       tests/test_api_domains.py \
+       -v --cov=app
+
+# AuthServiceClientテスト
+pytest tests/test_services_auth_client.py -v
+```
+
+### テストケース数
+- **合計**: 133件
+  - Model層: 11件
+  - Schema層: 21件
+  - Repository層: 22件
+  - Service層: 54件
+  - API層: 25件
+
+### カバレッジ目標
+- 行カバレッジ: 80%以上
+- 分岐カバレッジ: 70%以上
+
+詳細は[テスト設計書](/workspace/docs/管理アプリ/Phase1-MVP開発/Specs/06-テナント管理サービス-ユーザー・ドメイン管理-テスト設計書.md)を参照。
 
 ## ビルド確認
 
@@ -322,7 +549,10 @@ Proprietary - All rights reserved
 
 ## 関連ドキュメント
 
-- [機能仕様書](/workspace/docs/管理アプリ/Phase1-MVP開発/Specs/05-テナント管理サービス-コアAPI.md)
+- [機能仕様書（タスク05）](/workspace/docs/管理アプリ/Phase1-MVP開発/Specs/05-テナント管理サービス-コアAPI.md)
+- [機能仕様書（タスク06）](/workspace/docs/管理アプリ/Phase1-MVP開発/Specs/06-テナント管理サービス-ユーザー・ドメイン管理.md)
+- [テスト設計書（タスク06）](/workspace/docs/管理アプリ/Phase1-MVP開発/Specs/06-テナント管理サービス-ユーザー・ドメイン管理-テスト設計書.md)
+- [テストプランレポート（タスク06）](/workspace/docs/管理アプリ/Phase1-MVP開発/Specs/06-テナント管理サービス-ユーザー・ドメイン管理-テストプランレポート.md)
 - [アーキテクチャ概要](/workspace/docs/arch/overview.md)
 - [コンポーネント設計](/workspace/docs/arch/components/README.md)
 - [API設計](/workspace/docs/arch/api/README.md)

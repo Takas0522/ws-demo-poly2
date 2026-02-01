@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from azure.cosmos.aio import CosmosClient
 
 from app.config import settings
-from app.api import tenants
+from app.api import tenants, tenant_users, domains
 
 # ロガー設定
 logging.basicConfig(
@@ -110,6 +110,16 @@ app.include_router(
     tenants.router,
     prefix=f"/api/{settings.API_VERSION}/tenants",
     tags=["Tenants"],
+)
+app.include_router(
+    tenant_users.router,
+    prefix=f"/api/{settings.API_VERSION}/tenants",
+    tags=["Tenant Users"],
+)
+app.include_router(
+    domains.router,
+    prefix=f"/api/{settings.API_VERSION}/tenants",
+    tags=["Domains"],
 )
 
 

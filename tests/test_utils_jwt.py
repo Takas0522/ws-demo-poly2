@@ -13,6 +13,14 @@ import jwt
 from app.utils.jwt import verify_token, is_privileged_tenant, TokenData
 from app.config import settings
 
+# テスト用のJWT_SECRET_KEY（64文字以上）
+TEST_JWT_SECRET_KEY = "test_jwt_secret_key_for_testing_purposes_at_least_64_characters_long"
+
+@pytest.fixture(autouse=True)
+def setup_jwt_secret(monkeypatch):
+    """すべてのテストで自動的にJWT_SECRET_KEYを設定"""
+    monkeypatch.setattr(settings, 'JWT_SECRET_KEY', TEST_JWT_SECRET_KEY)
+
 
 class TestVerifyToken:
     """verify_token関数のテスト"""
