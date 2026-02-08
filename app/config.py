@@ -21,7 +21,10 @@ class Settings(BaseSettings):
 
     # CORS settings
     cors_origins: list[str] = ["http://localhost:3000"]
-    
+
+    # Application Insights settings
+    applicationinsights_connection_string: str = ""
+
     # Log settings
     log_level: str = "INFO"
 
