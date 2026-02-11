@@ -2,7 +2,7 @@
 
 ## 概要
 
-本サービスは、ユーザーの認証（Authentication）と認可（Authorization）を管理するマイクロサービスです。  
+本サービスは、ユーザーの認証（Authentication）と認可（Authorization）を管理するマイクロサービスです。
 ID/パスワード認証、JWT発行・検証、ロール管理機能を提供します。
 
 ## 技術スタック
@@ -104,6 +104,7 @@ API ドキュメント: http://localhost:8001/docs
 ### 新しいエンドポイントの追加
 
 1. **モデル定義** (`app/models/`)
+
 ```python
 # app/models/user.py
 from pydantic import BaseModel, EmailStr
@@ -115,6 +116,7 @@ class UserCreate(BaseModel):
 ```
 
 2. **リポジトリ実装** (`app/repositories/`)
+
 ```python
 # app/repositories/user_repository.py
 class UserRepository:
@@ -124,12 +126,13 @@ class UserRepository:
 ```
 
 3. **サービス実装** (`app/services/`)
+
 ```python
 # app/services/user_service.py
 class UserService:
     def __init__(self, user_repo: UserRepository):
         self.user_repo = user_repo
-    
+
     async def create_user(self, user: UserCreate) -> User:
         # ビジネスロジック
         hashed_password = hash_password(user.password)
@@ -137,6 +140,7 @@ class UserService:
 ```
 
 4. **エンドポイント実装** (`app/api/v1/`)
+
 ```python
 # app/api/v1/users.py
 from fastapi import APIRouter, Depends
@@ -217,6 +221,7 @@ isort app/
 ### 認証
 
 #### ログイン
+
 ```http
 POST /api/v1/auth/login
 Content-Type: application/json
@@ -228,6 +233,7 @@ Content-Type: application/json
 ```
 
 **レスポンス**:
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -241,6 +247,7 @@ Content-Type: application/json
 ```
 
 #### トークン検証
+
 ```http
 POST /api/v1/auth/verify
 Authorization: Bearer {token}
@@ -249,12 +256,14 @@ Authorization: Bearer {token}
 ### ユーザー管理
 
 #### ユーザー一覧取得
+
 ```http
 GET /api/v1/users?page=1&limit=20
 Authorization: Bearer {token}
 ```
 
 #### ユーザー作成
+
 ```http
 POST /api/v1/users
 Authorization: Bearer {token}
@@ -268,6 +277,7 @@ Content-Type: application/json
 ```
 
 #### ユーザー更新
+
 ```http
 PUT /api/v1/users/{user_id}
 Authorization: Bearer {token}
@@ -279,6 +289,7 @@ Content-Type: application/json
 ```
 
 #### ユーザー削除
+
 ```http
 DELETE /api/v1/users/{user_id}
 Authorization: Bearer {token}
@@ -287,12 +298,14 @@ Authorization: Bearer {token}
 ### ロール管理
 
 #### ロール一覧取得
+
 ```http
 GET /api/v1/roles
 Authorization: Bearer {token}
 ```
 
 #### ユーザーロール割り当て
+
 ```http
 POST /api/v1/user-roles
 Authorization: Bearer {token}
@@ -305,7 +318,7 @@ Content-Type: application/json
 }
 ```
 
-詳細は [API設計仕様書](../../docs/arch/api/api-specification.md#2-認証認可サービス-api) を参照してください。
+詳細は [API設計仕様書](./docs/api-specification.md) を参照してください。
 
 ## データモデル
 
@@ -410,10 +423,12 @@ docker ps | grep cosmos
 
 ## 関連ドキュメント
 
-- [コンポーネント設計 - 認証認可サービス](../../docs/arch/components/README.md#2-認証認可サービス)
-- [API設計仕様書](../../docs/arch/api/api-specification.md#2-認証認可サービス-api)
+- [コンポーネント設計](./docs/component-design.md)
+- [API設計仕様書](./docs/api-specification.md)
+- [API共通仕様](../../docs/arch/api/api-specification.md)
 - [データ設計](../../docs/arch/data/data-model.md#22-認証認可データモデル)
 - [アーキテクチャ概要](../../docs/arch/overview.md)
+- [IaC定義](./infra/container-app.bicep)
 
 ## ライセンス
 
