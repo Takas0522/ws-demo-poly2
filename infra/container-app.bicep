@@ -115,9 +115,9 @@ resource authServiceApp 'Microsoft.App/containerApps@2023-05-01' = {
             { name: 'ENVIRONMENT', value: environment }
             { name: 'COSMOS_DB_ENDPOINT', value: cosmosDbEndpoint }
             { name: 'COSMOS_DB_DATABASE', value: 'auth_management' }
-            { name: 'JWT_SECRET_KEY', secretRef: 'jwt-secret-key' }
+            { name: 'JWT_SECRET', secretRef: 'jwt-secret-key' }
             { name: 'JWT_ALGORITHM', value: 'HS256' }
-            { name: 'JWT_EXPIRE_MINUTES', value: '1440' }
+            { name: 'JWT_EXPIRATION_HOURS', value: '24' }
             { name: 'SERVICE_SHARED_SECRET', secretRef: 'service-shared-secret' }
             { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsightsConnectionString }
           ]
