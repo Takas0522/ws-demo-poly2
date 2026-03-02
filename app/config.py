@@ -9,7 +9,7 @@ class Settings(BaseSettings):
 
     # Cosmos DB settings
     cosmos_db_endpoint: str
-    cosmos_db_key: str
+    cosmos_db_key: str = ""
     cosmos_db_database: str = "auth_management"
     cosmos_db_container: str = "users"
     cosmos_db_connection_verify: bool = True
