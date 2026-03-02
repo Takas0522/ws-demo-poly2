@@ -33,10 +33,6 @@ param appInsightsConnectionString string
 param cosmosDbEndpoint string
 
 @secure()
-@description('Cosmos DB プライマリキー')
-param cosmosDbKey string
-
-@secure()
 @description('JWT Secret Key')
 param jwtSecretKey string
 
@@ -67,6 +63,9 @@ resource authServiceApp 'Microsoft.App/containerApps@2023-05-01' = {
   name: 'ca-auth-${environment}'
   location: location
   tags: union(tags, { Service: 'auth-service' })
+  identity: {
+    type: 'SystemAssigned'
+  }
   properties: {
     managedEnvironmentId: containerAppsEnvironmentId
     configuration: {
@@ -92,10 +91,6 @@ resource authServiceApp 'Microsoft.App/containerApps@2023-05-01' = {
       ]
       secrets: [
         {
-          name: 'cosmos-db-key'
-          value: cosmosDbKey
-        }
-        {
           name: 'jwt-secret-key'
           value: jwtSecretKey
         }
@@ -119,7 +114,6 @@ resource authServiceApp 'Microsoft.App/containerApps@2023-05-01' = {
             { name: 'PORT', value: '8001' }
             { name: 'ENVIRONMENT', value: environment }
             { name: 'COSMOS_DB_ENDPOINT', value: cosmosDbEndpoint }
-            { name: 'COSMOS_DB_KEY', secretRef: 'cosmos-db-key' }
             { name: 'COSMOS_DB_DATABASE', value: 'auth_management' }
             { name: 'JWT_SECRET_KEY', secretRef: 'jwt-secret-key' }
             { name: 'JWT_ALGORITHM', value: 'HS256' }
@@ -156,3 +150,4 @@ resource authServiceApp 'Microsoft.App/containerApps@2023-05-01' = {
 // -----------------------------------------------------------------------------
 output fqdn string = authServiceApp.properties.configuration.ingress.fqdn
 output name string = authServiceApp.name
+output principalId string = authServiceApp.identity.principalId
